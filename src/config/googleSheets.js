@@ -12,7 +12,7 @@ try {
 }
 
 const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
-const sheetName = process.env.ATTENDANCE_SHEET_NAME || '出席記録';
+const sheetName = process.env.ATTENDANCE_SHEET_NAME || 'Attendance';
 
 if (!credentials.client_email || !spreadsheetId) {
   console.warn('⚠️  Google Sheets環境変数が設定されていません');
