@@ -1,4 +1,7 @@
-require('dotenv').config();
+// Vercel環境では環境変数が自動的に読み込まれるため、dotenvは不要
+if (process.env.VERCEL !== '1') {
+  require('dotenv').config();
+}
 const express = require('express');
 const lineSignatureMiddleware = require('./middleware/lineSignature');
 const errorHandler = require('./middleware/errorHandler');

@@ -1,4 +1,6 @@
-require('dotenv').config();
+if (process.env.VERCEL !== '1') {
+  require('dotenv').config();
+}
 const { Client } = require('@line/bot-sdk');
 
 // LINE Bot設定
