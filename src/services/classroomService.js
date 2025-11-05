@@ -47,17 +47,31 @@ async function getAvailableSeats(classroom, startSeat, endSeat) {
 async function generateClassroomQuickReply() {
   const classrooms = await getActiveClassrooms();
 
-  return {
+  const quickReply = {
     items: classrooms.map(classroom => ({
       type: 'action',
       action: {
         type: 'postback',
         label: classroom.name,
-        data: `action=select_classroom&classroom=${classroom.name}&range=${classroom.startSeat}-${classroom.endSeat}`,
+        data: `action=select_classroom&classroom=${encodeURIComponent(classroom.name)}&range=${classroom.startSeat}-${classroom.endSeat}`,
         displayText: classroom.name,
       },
     })),
   };
+
+  console.log('📝 Generated Quick Reply:', JSON.stringify(quickReply, null, 2));
+  console.log('📊 Item count:', quickReply.items.length);
+
+  // データサイズをチェック
+  quickReply.items.forEach((item, index) => {
+    const dataSize = Buffer.byteLength(item.action.data, 'utf8');
+    console.log(`  Item ${index}: "${item.action.label}" - data size: ${dataSize} bytes`);
+    if (dataSize > 300) {
+      console.warn(`⚠️  警告: Item ${index} のデータサイズが300バイトを超えています`);
+    }
+  });
+
+  return quickReply;
 }
 
 /**

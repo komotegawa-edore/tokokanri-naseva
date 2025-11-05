@@ -80,18 +80,8 @@ async function handleEvent(event) {
       error.message
     );
 
-    // ユーザーにエラーメッセージ送信
-    // replyTokenは既に使用されている可能性があるため、pushMessageを使用
-    if (lineUserId && error.code !== 'ERR_BAD_REQUEST') {
-      try {
-        await client.pushMessage(lineUserId, {
-          type: 'text',
-          text: messages.ERROR_GENERAL,
-        });
-      } catch (pushError) {
-        console.error('エラーメッセージ送信失敗:', pushError);
-      }
-    }
+    // エラーメッセージは送信しない（無限ループを防ぐため）
+    // ユーザーには各コントローラーから適切なメッセージが送信される
   }
 }
 

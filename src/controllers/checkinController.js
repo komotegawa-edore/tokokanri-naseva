@@ -31,10 +31,19 @@ async function startCheckin(event) {
 
   // 教室選択メッセージを送信（スプレッドシートから動的に生成）
   const classroomQuickReply = await classroomService.generateClassroomQuickReply();
-  await client.replyMessage(event.replyToken, buildTextMessage(
-    messages.CHECKIN_SELECT_CLASSROOM,
-    classroomQuickReply
-  ));
+
+  try {
+    await client.replyMessage(event.replyToken, buildTextMessage(
+      messages.CHECKIN_SELECT_CLASSROOM,
+      classroomQuickReply
+    ));
+  } catch (error) {
+    console.error('❌ replyMessage失敗:', error);
+    if (error.originalError?.response?.data) {
+      console.error('LINE API Error Details:', JSON.stringify(error.originalError.response.data, null, 2));
+    }
+    throw error;
+  }
 }
 
 /**
@@ -120,10 +129,8 @@ async function selectSeat(event, postbackData) {
 
   } catch (error) {
     console.error('登校処理エラー:', error);
-    await client.replyMessage(event.replyToken, {
-      type: 'text',
-      text: messages.ERROR_GENERAL,
-    });
+    // エラー時はreplyTokenが既に使用されている可能性があるため、何もしない
+    throw error;
   }
 }
 
