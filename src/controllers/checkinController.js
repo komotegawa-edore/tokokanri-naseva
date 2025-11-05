@@ -58,25 +58,77 @@ async function selectClassroom(event, postbackData) {
   // 座席範囲を解析
   const [startSeat, endSeat] = range.split('-').map(Number);
 
-  // セッション更新（座席選択ステップ）
+  // セッション更新（座席範囲選択ステップ）
   await sessionRepository.createOrUpdateSession(
     lineUserId,
     'checkin',
-    'select_seat',
+    'select_seat_range',
     { classroom, startSeat, endSeat }
   );
 
-  // 座席番号選択メッセージを送信（使用中の座席を除外）
-  const seatQuickReply = await classroomService.generateSeatQuickReply(
+  // 座席範囲選択メッセージを送信
+  const seatRangeQuickReply = await classroomService.generateSeatRangeQuickReply(
     classroom,
     startSeat,
-    endSeat,
-    0 // 最初のページ
+    endSeat
   );
+
   await client.replyMessage(event.replyToken, buildTextMessage(
-    messages.CHECKIN_SELECT_SEAT(classroom),
-    seatQuickReply
+    `${classroom}の座席範囲を選択してください`,
+    seatRangeQuickReply
   ));
+}
+
+/**
+ * 座席範囲選択処理
+ */
+async function selectSeatRange(event, postbackData) {
+  const lineUserId = event.source.userId;
+  const { classroom, start, end, isFinal } = postbackData;
+  const startSeat = parseInt(start);
+  const endSeat = parseInt(end);
+
+  // isFinalがtrueなら直接座席選択、falseなら再度範囲分割
+  if (isFinal === 'true') {
+    // セッション更新（座席選択ステップ）
+    await sessionRepository.createOrUpdateSession(
+      lineUserId,
+      'checkin',
+      'select_seat',
+      { classroom, startSeat, endSeat }
+    );
+
+    // 座席番号選択メッセージを送信
+    const seatQuickReply = await classroomService.generateSeatQuickReply(
+      classroom,
+      startSeat,
+      endSeat
+    );
+
+    await client.replyMessage(event.replyToken, buildTextMessage(
+      messages.CHECKIN_SELECT_SEAT(classroom),
+      seatQuickReply
+    ));
+  } else {
+    // まだ13席を超える場合、再度範囲選択
+    await sessionRepository.createOrUpdateSession(
+      lineUserId,
+      'checkin',
+      'select_seat_range',
+      { classroom, startSeat, endSeat }
+    );
+
+    const seatRangeQuickReply = await classroomService.generateSeatRangeQuickReply(
+      classroom,
+      startSeat,
+      endSeat
+    );
+
+    await client.replyMessage(event.replyToken, buildTextMessage(
+      `${classroom}の座席範囲を選択してください`,
+      seatRangeQuickReply
+    ));
+  }
 }
 
 /**
@@ -162,6 +214,7 @@ async function showMoreSeats(event, postbackData) {
 module.exports = {
   startCheckin,
   selectClassroom,
+  selectSeatRange,
   selectSeat,
   showMoreSeats,
 };

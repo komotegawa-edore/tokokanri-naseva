@@ -75,15 +75,78 @@ async function generateClassroomQuickReply() {
 }
 
 /**
+ * 座席範囲を分割
+ * @param {number} startSeat - 開始座席番号
+ * @param {number} endSeat - 終了座席番号
+ * @param {number} maxItems - 最大アイテム数（デフォルト: 13）
+ * @returns {Array} 分割された範囲の配列 [{start, end, label}, ...]
+ */
+function divideSeatRange(startSeat, endSeat, maxItems = 13) {
+  const totalSeats = endSeat - startSeat + 1;
+
+  // 13席以下なら分割不要
+  if (totalSeats <= maxItems) {
+    return [{
+      start: startSeat,
+      end: endSeat,
+      label: `${startSeat}〜${endSeat}番`,
+      isFinal: true,
+    }];
+  }
+
+  // 分割数を決定（2分割、3分割）
+  const divisions = totalSeats > maxItems * 2 ? 3 : 2;
+  const seatsPerDivision = Math.ceil(totalSeats / divisions);
+
+  const ranges = [];
+  for (let i = 0; i < divisions; i++) {
+    const start = startSeat + (i * seatsPerDivision);
+    const end = Math.min(start + seatsPerDivision - 1, endSeat);
+
+    if (start <= endSeat) {
+      ranges.push({
+        start,
+        end,
+        label: `${start}〜${end}番`,
+        isFinal: false,
+      });
+    }
+  }
+
+  return ranges;
+}
+
+/**
+ * 座席範囲選択用のQuick Replyを生成
+ * @param {string} classroom - 教室名
+ * @param {number} startSeat - 開始座席番号
+ * @param {number} endSeat - 終了座席番号
+ * @returns {Promise<object>} Quick Reply オブジェクト
+ */
+async function generateSeatRangeQuickReply(classroom, startSeat, endSeat) {
+  const ranges = divideSeatRange(startSeat, endSeat);
+
+  const items = ranges.map(range => ({
+    type: 'action',
+    action: {
+      type: 'postback',
+      label: range.label,
+      data: `action=select_seat_range&classroom=${encodeURIComponent(classroom)}&start=${range.start}&end=${range.end}&isFinal=${range.isFinal}`,
+      displayText: range.label,
+    },
+  }));
+
+  return { items };
+}
+
+/**
  * 座席選択用のQuick Replyを生成（使用中の座席を除外）
  * @param {string} classroom - 教室名
  * @param {number} startSeat - 開始座席番号
  * @param {number} endSeat - 終了座席番号
- * @param {number} currentPage - 現在のページ（0始まり）
- * @param {number} itemsPerPage - 1ページあたりの座席数（デフォルト: 12）
  * @returns {Promise<object>} Quick Reply オブジェクト
  */
-async function generateSeatQuickReply(classroom, startSeat, endSeat, currentPage = 0, itemsPerPage = 12) {
+async function generateSeatQuickReply(classroom, startSeat, endSeat) {
   // 利用可能な座席を取得
   const availableSeats = await getAvailableSeats(classroom, startSeat, endSeat);
 
@@ -101,12 +164,23 @@ async function generateSeatQuickReply(classroom, startSeat, endSeat, currentPage
     };
   }
 
-  // ページネーション
-  const start = currentPage * itemsPerPage;
-  const end = start + itemsPerPage;
-  const seatsToShow = availableSeats.slice(start, end);
-  const hasMore = availableSeats.length > end;
+  // 13席以下なら直接座席番号を表示
+  if (availableSeats.length <= 13) {
+    return {
+      items: availableSeats.map(seat => ({
+        type: 'action',
+        action: {
+          type: 'postback',
+          label: `${seat}番`,
+          data: `action=select_seat&seat=${seat}`,
+          displayText: `${seat}番`,
+        },
+      })),
+    };
+  }
 
+  // 13席を超える場合は最初の12席と「もっと見る」
+  const seatsToShow = availableSeats.slice(0, 12);
   const items = seatsToShow.map(seat => ({
     type: 'action',
     action: {
@@ -117,18 +191,16 @@ async function generateSeatQuickReply(classroom, startSeat, endSeat, currentPage
     },
   }));
 
-  // 「もっと見る」ボタンを追加
-  if (hasMore && items.length < 13) {
-    items.push({
-      type: 'action',
-      action: {
-        type: 'postback',
-        label: 'もっと見る',
-        data: `action=show_more_seats&classroom=${classroom}&start=${availableSeats[end]}&end=${endSeat}&page=${currentPage + 1}`,
-        displayText: 'もっと見る',
-      },
-    });
-  }
+  // 「もっと見る」ボタン
+  items.push({
+    type: 'action',
+    action: {
+      type: 'postback',
+      label: 'もっと見る',
+      data: `action=show_more_seats&classroom=${encodeURIComponent(classroom)}&start=${startSeat}&end=${endSeat}&offset=12`,
+      displayText: 'もっと見る',
+    },
+  });
 
   return { items };
 }
@@ -138,5 +210,6 @@ module.exports = {
   getSeatRangeByClassroom,
   getAvailableSeats,
   generateClassroomQuickReply,
+  generateSeatRangeQuickReply,
   generateSeatQuickReply,
 };

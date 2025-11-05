@@ -136,6 +136,10 @@ async function handlePostback(event) {
       await checkinController.selectClassroom(event, postbackData);
       break;
 
+    case 'select_seat_range':
+      await checkinController.selectSeatRange(event, postbackData);
+      break;
+
     case 'select_seat':
       await checkinController.selectSeat(event, postbackData);
       break;
