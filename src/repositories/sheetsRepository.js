@@ -57,7 +57,7 @@ async function getLatestCheckinRecord(lineUserId) {
         studentName,
         lineUserId: userId,
         classroom,
-        seatNumber: parseInt(seatNumber),
+        seatNumber: parseInt(seatNumber, 10),
         checkoutTime,
       };
     }
@@ -109,13 +109,14 @@ async function getUserHistory(lineUserId, limit = 10) {
     const [timestamp, studentName, userId, classroom, seatNumber, checkoutTime, duration] = row;
 
     if (userId === lineUserId) {
+      const hasDurationValue = duration !== undefined && duration !== null && duration !== '';
       userRecords.push({
         timestamp,
         studentName,
         classroom,
-        seatNumber: parseInt(seatNumber),
+        seatNumber: parseInt(seatNumber, 10),
         checkoutTime,
-        durationMinutes: duration ? parseInt(duration) : null,
+        durationMinutes: hasDurationValue ? parseInt(duration, 10) : null,
       });
     }
   }
@@ -148,7 +149,7 @@ async function getOccupiedSeats(classroom) {
 
     // 同じ教室で、まだ下校していない座席を記録
     if (roomName === classroom && !checkoutTime && seatNumber) {
-      occupiedSeats.push(parseInt(seatNumber));
+      occupiedSeats.push(parseInt(seatNumber, 10));
     }
   }
 

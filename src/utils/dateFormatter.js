@@ -1,19 +1,14 @@
-const { format, parseISO } = require('date-fns');
-const { utcToZonedTime } = require('date-fns-tz');
+const { parseISO } = require('date-fns');
+const { utcToZonedTime, formatInTimeZone, zonedTimeToUtc } = require('date-fns-tz');
 
 const TIMEZONE = 'Asia/Tokyo';
 
 /**
- * 現在時刻をJST形式で取得
- * @returns {Date} JST時刻
+ * 現在時刻を取得
+ * @returns {Date} 現在時刻（UTC基準のDateオブジェクト）
  */
 function getCurrentJSTTime() {
-  // new Date()は既にシステムのローカル時刻
-  // Vercelはデフォルトでタイムゾーンを持たないため、明示的にJSTで取得
-  const now = new Date();
-  const jstOffset = 9 * 60; // JSTはUTC+9
-  const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
-  return new Date(utcTime + (jstOffset * 60000));
+  return new Date();
 }
 
 /**
@@ -32,10 +27,7 @@ function formatDate(date, formatStr = 'yyyy/MM/dd HH:mm') {
     return '';
   }
 
-  // 既にJSTの時刻が入っているため、そのままフォーマット
-  const formatted = format(dateObj, formatStr);
-  console.log(`🕐 formatDate: ${date.toISOString()} -> "${formatted}"`);
-  return formatted;
+  return formatInTimeZone(dateObj, TIMEZONE, formatStr);
 }
 
 /**
@@ -78,8 +70,8 @@ function parseSheetDateString(dateString) {
       console.log(`🔄 Normalized time: "${dateString}" -> "${normalized}"`);
     }
 
-    const isoString = normalized.replace(' ', 'T') + '+09:00';
-    const date = new Date(isoString);
+    // JSTとして解釈し、UTCのDateオブジェクトに変換
+    const date = zonedTimeToUtc(normalized, TIMEZONE);
 
     // 無効な日付かチェック
     if (isNaN(date.getTime())) {

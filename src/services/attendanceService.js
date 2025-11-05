@@ -20,6 +20,15 @@ async function checkin(lineUserId, displayName, classroom, seatNumber) {
     };
   }
 
+  // 座席の重複利用を防止
+  const occupiedSeats = await sheetsRepository.getOccupiedSeats(classroom);
+  if (occupiedSeats.includes(seatNumber)) {
+    return {
+      success: false,
+      message: 'seat_taken',
+    };
+  }
+
   // ユーザー情報を取得または作成
   await userRepository.getOrCreateUser(lineUserId, displayName);
 

@@ -56,7 +56,7 @@ async function selectClassroom(event, postbackData) {
   const { classroom, range } = postbackData;
 
   // 座席範囲を解析
-  const [startSeat, endSeat] = range.split('-').map(Number);
+  const [startSeat, endSeat] = range.split('-').map((value) => parseInt(value, 10));
   const totalSeats = endSeat - startSeat + 1;
 
   // 13席以下なら直接座席番号選択
@@ -106,8 +106,8 @@ async function selectClassroom(event, postbackData) {
 async function selectSeatRange(event, postbackData) {
   const lineUserId = event.source.userId;
   const { classroom, start, end, isFinal } = postbackData;
-  const startSeat = parseInt(start);
-  const endSeat = parseInt(end);
+  const startSeat = parseInt(start, 10);
+  const endSeat = parseInt(end, 10);
 
   // isFinalがtrueなら直接座席選択、falseなら再度範囲分割
   if (isFinal === 'true') {
@@ -161,7 +161,7 @@ async function selectSeat(event, postbackData) {
     ? (await client.getProfile(lineUserId)).displayName
     : 'ゲスト';
   const { seat } = postbackData;
-  const seatNumber = parseInt(seat);
+  const seatNumber = parseInt(seat, 10);
 
   // セッション取得
   const session = await sessionRepository.getSession(lineUserId, 'checkin');
@@ -185,9 +185,13 @@ async function selectSeat(event, postbackData) {
     );
 
     if (!result.success) {
+      const errorMessage = result.message === 'seat_taken'
+        ? messages.CHECKIN_SEAT_TAKEN(classroom, seatNumber)
+        : messages.CHECKIN_ALREADY;
+
       await client.replyMessage(event.replyToken, {
         type: 'text',
-        text: messages.CHECKIN_ALREADY,
+        text: errorMessage,
       });
       return;
     }
@@ -213,17 +217,18 @@ async function selectSeat(event, postbackData) {
  * 「もっと見る」処理
  */
 async function showMoreSeats(event, postbackData) {
-  const { classroom, start, end, page } = postbackData;
-  const startSeat = parseInt(start);
-  const endSeat = parseInt(end);
-  const currentPage = parseInt(page) || 0;
+  const { classroom, start, end, offset } = postbackData;
+  const startSeat = parseInt(start, 10);
+  const endSeat = parseInt(end, 10);
+  const offsetValue = parseInt(offset, 10);
+  const nextOffset = Number.isNaN(offsetValue) ? 0 : offsetValue;
 
   // 次のページの座席番号を生成（使用中の座席を除外）
   const seatQuickReply = await classroomService.generateSeatQuickReply(
     classroom,
     startSeat,
     endSeat,
-    currentPage
+    nextOffset
   );
 
   await client.replyMessage(event.replyToken, buildTextMessage(

@@ -146,7 +146,7 @@ async function generateSeatRangeQuickReply(classroom, startSeat, endSeat) {
  * @param {number} endSeat - 終了座席番号
  * @returns {Promise<object>} Quick Reply オブジェクト
  */
-async function generateSeatQuickReply(classroom, startSeat, endSeat) {
+async function generateSeatQuickReply(classroom, startSeat, endSeat, offset = 0) {
   // 利用可能な座席を取得
   const availableSeats = await getAvailableSeats(classroom, startSeat, endSeat);
 
@@ -164,23 +164,9 @@ async function generateSeatQuickReply(classroom, startSeat, endSeat) {
     };
   }
 
-  // 13席以下なら直接座席番号を表示
-  if (availableSeats.length <= 13) {
-    return {
-      items: availableSeats.map(seat => ({
-        type: 'action',
-        action: {
-          type: 'postback',
-          label: `${seat}番`,
-          data: `action=select_seat&seat=${seat}`,
-          displayText: `${seat}番`,
-        },
-      })),
-    };
-  }
+  const normalizedOffset = Math.max(0, Math.min(offset, Math.max(availableSeats.length - 1, 0)));
+  const seatsToShow = availableSeats.slice(normalizedOffset, normalizedOffset + 12);
 
-  // 13席を超える場合は最初の12席と「もっと見る」
-  const seatsToShow = availableSeats.slice(0, 12);
   const items = seatsToShow.map(seat => ({
     type: 'action',
     action: {
@@ -191,16 +177,19 @@ async function generateSeatQuickReply(classroom, startSeat, endSeat) {
     },
   }));
 
-  // 「もっと見る」ボタン
-  items.push({
-    type: 'action',
-    action: {
-      type: 'postback',
-      label: 'もっと見る',
-      data: `action=show_more_seats&classroom=${encodeURIComponent(classroom)}&start=${startSeat}&end=${endSeat}&offset=12`,
-      displayText: 'もっと見る',
-    },
-  });
+  const hasMore = availableSeats.length > normalizedOffset + seatsToShow.length;
+
+  if (hasMore) {
+    items.push({
+      type: 'action',
+      action: {
+        type: 'postback',
+        label: 'もっと見る',
+        data: `action=show_more_seats&classroom=${encodeURIComponent(classroom)}&start=${startSeat}&end=${endSeat}&offset=${normalizedOffset + seatsToShow.length}`,
+        displayText: 'もっと見る',
+      },
+    });
+  }
 
   return { items };
 }
