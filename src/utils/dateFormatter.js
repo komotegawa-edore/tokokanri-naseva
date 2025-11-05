@@ -25,8 +25,17 @@ function getCurrentJSTTime() {
 function formatDate(date, formatStr = 'yyyy/MM/dd HH:mm') {
   // dateが文字列の場合はDateオブジェクトに変換
   const dateObj = typeof date === 'string' ? new Date(date) : date;
+
+  // 無効な日付のチェック
+  if (!dateObj || isNaN(dateObj.getTime())) {
+    console.error('❌ formatDate: 無効な日付オブジェクト', date);
+    return '';
+  }
+
   // 既にJSTの時刻が入っているため、そのままフォーマット
-  return format(dateObj, formatStr);
+  const formatted = format(dateObj, formatStr);
+  console.log(`🕐 formatDate: ${date.toISOString()} -> "${formatted}"`);
+  return formatted;
 }
 
 /**
@@ -56,9 +65,20 @@ function parseSheetDateString(dateString) {
   }
 
   // "yyyy-MM-dd HH:mm:ss"形式の文字列をJSTとして解釈
-  // この文字列は既にJST時刻で保存されているため、そのまま使用
+  // "yyyy-MM-dd H:mm:ss"（1桁の時刻）にも対応
   try {
-    const isoString = dateString.replace(' ', 'T') + '+09:00';
+    // 日時文字列を正規化（1桁の時刻を2桁に）
+    let normalized = dateString.trim();
+
+    // "2025-11-06 3:03:12" -> "2025-11-06 03:03:12"
+    const match = normalized.match(/^(\d{4}-\d{2}-\d{2})\s+(\d{1,2}):(\d{2}):(\d{2})$/);
+    if (match) {
+      const [, datePart, hour, minute, second] = match;
+      normalized = `${datePart} ${hour.padStart(2, '0')}:${minute}:${second}`;
+      console.log(`🔄 Normalized time: "${dateString}" -> "${normalized}"`);
+    }
+
+    const isoString = normalized.replace(' ', 'T') + '+09:00';
     const date = new Date(isoString);
 
     // 無効な日付かチェック

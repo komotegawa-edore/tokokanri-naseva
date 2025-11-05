@@ -62,10 +62,8 @@ async function confirmCheckout(event, postbackData) {
 
   } catch (error) {
     console.error('下校処理エラー:', error);
-    await client.replyMessage(event.replyToken, {
-      type: 'text',
-      text: messages.ERROR_GENERAL,
-    });
+    // エラー時はreplyTokenが既に使用されている可能性があるため、何もしない
+    throw error;
   }
 }
 
