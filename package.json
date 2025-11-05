@@ -1,0 +1,40 @@
+{
+  "name": "tokokanri-naseva",
+  "version": "1.0.0",
+  "description": "学習塾の登校管理LINEボットアプリ",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "jest",
+    "lint": "eslint src/**/*.js"
+  },
+  "keywords": [
+    "line-bot",
+    "attendance",
+    "education",
+    "juku"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@line/bot-sdk": "^8.0.0",
+    "@supabase/supabase-js": "^2.38.0",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "googleapis": "^128.0.0",
+    "openai": "^4.20.0",
+    "@anthropic-ai/sdk": "^0.20.0",
+    "@sendgrid/mail": "^8.1.0",
+    "date-fns": "^2.30.0",
+    "date-fns-tz": "^2.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1",
+    "eslint": "^8.54.0",
+    "jest": "^29.7.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
