@@ -2,7 +2,7 @@
   "name": "tokokanri-naseva",
   "version": "1.0.0",
   "description": "学習塾の登校管理LINEボットアプリ",
-  "main": "src/index.js",
+  "main": "api/index.js",
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
