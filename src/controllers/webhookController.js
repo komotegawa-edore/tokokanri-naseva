@@ -13,6 +13,11 @@ async function handleWebhook(req, res) {
   try {
     const events = req.body.events;
 
+    console.log(`📨 受信イベント数: ${events.length}`);
+    events.forEach((event, index) => {
+      console.log(`  Event ${index}: type=${event.type}, replyToken=${event.replyToken}`);
+    });
+
     // イベントを並行処理
     await Promise.all(events.map((event) => handleEvent(event)));
 

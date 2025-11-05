@@ -33,10 +33,12 @@ async function startCheckin(event) {
   const classroomQuickReply = await classroomService.generateClassroomQuickReply();
 
   try {
-    await client.replyMessage(event.replyToken, buildTextMessage(
-      messages.CHECKIN_SELECT_CLASSROOM,
-      classroomQuickReply
-    ));
+    console.log(`🔄 replyMessage呼び出し: replyToken=${event.replyToken}`);
+    const message = buildTextMessage(messages.CHECKIN_SELECT_CLASSROOM, classroomQuickReply);
+    console.log(`📤 送信メッセージ:`, JSON.stringify(message, null, 2));
+
+    await client.replyMessage(event.replyToken, message);
+    console.log(`✅ replyMessage成功`);
   } catch (error) {
     console.error('❌ replyMessage失敗:', error);
     if (error.originalError?.response?.data) {

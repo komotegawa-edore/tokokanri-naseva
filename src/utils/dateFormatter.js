@@ -8,7 +8,12 @@ const TIMEZONE = 'Asia/Tokyo';
  * @returns {Date} JST時刻
  */
 function getCurrentJSTTime() {
-  return utcToZonedTime(new Date(), TIMEZONE);
+  // new Date()は既にシステムのローカル時刻
+  // Vercelはデフォルトでタイムゾーンを持たないため、明示的にJSTで取得
+  const now = new Date();
+  const jstOffset = 9 * 60; // JSTはUTC+9
+  const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
+  return new Date(utcTime + (jstOffset * 60000));
 }
 
 /**
@@ -18,8 +23,10 @@ function getCurrentJSTTime() {
  * @returns {string} フォーマットされた日時文字列
  */
 function formatDate(date, formatStr = 'yyyy/MM/dd HH:mm') {
-  const jstDate = utcToZonedTime(date, TIMEZONE);
-  return format(jstDate, formatStr);
+  // dateが文字列の場合はDateオブジェクトに変換
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  // 既にJSTの時刻が入っているため、そのままフォーマット
+  return format(dateObj, formatStr);
 }
 
 /**
@@ -29,6 +36,18 @@ function formatDate(date, formatStr = 'yyyy/MM/dd HH:mm') {
  */
 function parseISOToJST(isoString) {
   return utcToZonedTime(parseISO(isoString), TIMEZONE);
+}
+
+/**
+ * Google Sheetsの日時文字列（yyyy-MM-dd HH:mm:ss）をDateオブジェクトに変換
+ * @param {string} dateString - 日時文字列
+ * @returns {Date} Dateオブジェクト（JST）
+ */
+function parseSheetDateString(dateString) {
+  // "yyyy-MM-dd HH:mm:ss"形式の文字列をJSTとして解釈
+  // この文字列は既にJST時刻で保存されているため、そのまま使用
+  const isoString = dateString.replace(' ', 'T') + '+09:00';
+  return new Date(isoString);
 }
 
 /**
@@ -60,6 +79,7 @@ module.exports = {
   getCurrentJSTTime,
   formatDate,
   parseISOToJST,
+  parseSheetDateString,
   getDurationInMinutes,
   formatDuration,
 };

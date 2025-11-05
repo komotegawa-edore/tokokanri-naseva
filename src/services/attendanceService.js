@@ -1,6 +1,6 @@
 const sheetsRepository = require('../repositories/sheetsRepository');
 const userRepository = require('../repositories/userRepository');
-const { getCurrentJSTTime, getDurationInMinutes, formatDuration } = require('../utils/dateFormatter');
+const { getCurrentJSTTime, parseSheetDateString, getDurationInMinutes, formatDuration } = require('../utils/dateFormatter');
 
 /**
  * 登校処理
@@ -59,7 +59,7 @@ async function checkout(lineUserId) {
 
   // 下校時刻と滞在時間を計算
   const checkoutTime = getCurrentJSTTime();
-  const checkinTime = new Date(checkinRecord.timestamp);
+  const checkinTime = parseSheetDateString(checkinRecord.timestamp);
   const durationMinutes = getDurationInMinutes(checkinTime, checkoutTime);
 
   // Google Sheetsを更新
