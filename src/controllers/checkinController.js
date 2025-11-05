@@ -5,6 +5,7 @@ const sessionRepository = require('../repositories/sessionRepository');
 const messages = require('../constants/messages');
 const { buildTextMessage, parsePostbackData } = require('../utils/messageBuilder');
 const { formatDate } = require('../utils/dateFormatter');
+const { replySafely } = require('../utils/lineReplyHelper');
 
 /**
  * 登校フロー開始
@@ -15,7 +16,7 @@ async function startCheckin(event) {
   // 既に登校中かチェック
   const isCheckedIn = await attendanceService.isCheckedIn(lineUserId);
   if (isCheckedIn) {
-    await client.replyMessage(event.replyToken, {
+    await replySafely(event, {
       type: 'text',
       text: messages.CHECKIN_ALREADY,
     });
@@ -37,7 +38,7 @@ async function startCheckin(event) {
     const message = buildTextMessage(messages.CHECKIN_SELECT_CLASSROOM, classroomQuickReply);
     console.log(`📤 送信メッセージ:`, JSON.stringify(message, null, 2));
 
-    await client.replyMessage(event.replyToken, message);
+    await replySafely(event, message);
     console.log(`✅ replyMessage成功`);
   } catch (error) {
     console.error('❌ replyMessage失敗:', error);
@@ -74,7 +75,7 @@ async function selectClassroom(event, postbackData) {
       endSeat
     );
 
-    await client.replyMessage(event.replyToken, buildTextMessage(
+    await replySafely(event, buildTextMessage(
       messages.CHECKIN_SELECT_SEAT(classroom),
       seatQuickReply
     ));
@@ -93,7 +94,7 @@ async function selectClassroom(event, postbackData) {
       endSeat
     );
 
-    await client.replyMessage(event.replyToken, buildTextMessage(
+    await replySafely(event, buildTextMessage(
       `${classroom}の座席範囲を選択してください`,
       seatRangeQuickReply
     ));
@@ -126,7 +127,7 @@ async function selectSeatRange(event, postbackData) {
       endSeat
     );
 
-    await client.replyMessage(event.replyToken, buildTextMessage(
+    await replySafely(event, buildTextMessage(
       messages.CHECKIN_SELECT_SEAT(classroom),
       seatQuickReply
     ));
@@ -145,7 +146,7 @@ async function selectSeatRange(event, postbackData) {
       endSeat
     );
 
-    await client.replyMessage(event.replyToken, buildTextMessage(
+    await replySafely(event, buildTextMessage(
       `${classroom}の座席範囲を選択してください`,
       seatRangeQuickReply
     ));
@@ -166,7 +167,7 @@ async function selectSeat(event, postbackData) {
   // セッション取得
   const session = await sessionRepository.getSession(lineUserId, 'checkin');
   if (!session || !session.session_data.classroom) {
-    await client.replyMessage(event.replyToken, {
+    await replySafely(event, {
       type: 'text',
       text: messages.ERROR_SESSION_EXPIRED,
     });
@@ -195,12 +196,12 @@ async function selectSeat(event, postbackData) {
             endSeat
           );
 
-          await client.replyMessage(event.replyToken, buildTextMessage(
+          await replySafely(event, buildTextMessage(
             messages.CHECKIN_SEAT_TAKEN(classroom, seatNumber),
             seatQuickReply
           ));
         } else {
-          await client.replyMessage(event.replyToken, {
+          await replySafely(event, {
             type: 'text',
             text: messages.CHECKIN_SEAT_TAKEN(classroom, seatNumber),
           });
@@ -210,7 +211,7 @@ async function selectSeat(event, postbackData) {
 
       // 既に登校中の場合はセッションを破棄して終了
       await sessionRepository.deleteSession(lineUserId, 'checkin');
-      await client.replyMessage(event.replyToken, {
+      await replySafely(event, {
         type: 'text',
         text: messages.CHECKIN_ALREADY,
       });
@@ -222,7 +223,7 @@ async function selectSeat(event, postbackData) {
 
     // 成功メッセージ送信
     const timeStr = formatDate(result.timestamp, 'yyyy/MM/dd HH:mm');
-    await client.replyMessage(event.replyToken, {
+    await replySafely(event, {
       type: 'text',
       text: messages.CHECKIN_SUCCESS(classroom, seatNumber, timeStr),
     });
@@ -252,7 +253,7 @@ async function showMoreSeats(event, postbackData) {
     nextOffset
   );
 
-  await client.replyMessage(event.replyToken, buildTextMessage(
+  await replySafely(event, buildTextMessage(
     '座席番号を選択してください',
     seatQuickReply
   ));

@@ -1,10 +1,10 @@
-const { client } = require('../config/line');
 const checkinController = require('./checkinController');
 const checkoutController = require('./checkoutController');
 const historyController = require('./historyController');
 const webhookLogRepository = require('../repositories/webhookLogRepository');
 const { parsePostbackData } = require('../utils/messageBuilder');
 const messages = require('../constants/messages');
+const { replySafely } = require('../utils/lineReplyHelper');
 
 /**
  * Webhookイベント処理のメインハンドラー
@@ -110,7 +110,7 @@ async function handleMessage(event) {
     await historyController.showHistory(event);
   } else {
     // デフォルトメッセージ
-    await client.replyMessage(event.replyToken, {
+    await replySafely(event, {
       type: 'text',
       text: 'リッチメニューから操作してください。\n\n・登校\n・下校\n・登校履歴',
     });
@@ -175,7 +175,7 @@ async function handleFollow(event) {
   console.log('新しいユーザーが友だち追加しました:', lineUserId);
 
   // ウェルカムメッセージ送信
-  await client.replyMessage(event.replyToken, {
+  await replySafely(event, {
     type: 'text',
     text: messages.WELCOME,
   });

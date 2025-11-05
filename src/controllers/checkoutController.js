@@ -1,8 +1,8 @@
-const { client } = require('../config/line');
 const attendanceService = require('../services/attendanceService');
 const messages = require('../constants/messages');
 const { checkoutConfirmQuickReply } = require('../constants/quickReplies');
 const { buildTextMessage } = require('../utils/messageBuilder');
+const { replySafely } = require('../utils/lineReplyHelper');
 
 /**
  * 下校フロー開始（確認メッセージ表示）
@@ -13,7 +13,7 @@ async function startCheckout(event) {
   // 登校中かチェック
   const isCheckedIn = await attendanceService.isCheckedIn(lineUserId);
   if (!isCheckedIn) {
-    await client.replyMessage(event.replyToken, {
+    await replySafely(event, {
       type: 'text',
       text: messages.CHECKOUT_NOT_CHECKEDIN,
     });
@@ -21,7 +21,7 @@ async function startCheckout(event) {
   }
 
   // 下校確認メッセージ送信
-  await client.replyMessage(event.replyToken, buildTextMessage(
+  await replySafely(event, buildTextMessage(
     messages.CHECKOUT_CONFIRM,
     checkoutConfirmQuickReply
   ));
@@ -35,7 +35,7 @@ async function confirmCheckout(event, postbackData) {
   const { answer } = postbackData;
 
   if (answer !== 'yes') {
-    await client.replyMessage(event.replyToken, {
+    await replySafely(event, {
       type: 'text',
       text: 'キャンセルしました。',
     });
@@ -47,7 +47,7 @@ async function confirmCheckout(event, postbackData) {
     const result = await attendanceService.checkout(lineUserId);
 
     if (!result.success) {
-      await client.replyMessage(event.replyToken, {
+      await replySafely(event, {
         type: 'text',
         text: messages.CHECKOUT_NOT_CHECKEDIN,
       });
@@ -55,7 +55,7 @@ async function confirmCheckout(event, postbackData) {
     }
 
     // 成功メッセージ送信
-    await client.replyMessage(event.replyToken, {
+    await replySafely(event, {
       type: 'text',
       text: messages.CHECKOUT_SUCCESS(result.durationFormatted),
     });

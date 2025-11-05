@@ -1,8 +1,8 @@
-const { client } = require('../config/line');
 const attendanceService = require('../services/attendanceService');
 const messages = require('../constants/messages');
 const { buildHistoryFlexMessage } = require('../utils/messageBuilder');
 const { formatDuration } = require('../utils/dateFormatter');
+const { replySafely } = require('../utils/lineReplyHelper');
 
 /**
  * 登校履歴表示
@@ -15,7 +15,7 @@ async function showHistory(event) {
     const history = await attendanceService.getHistory(lineUserId, 10);
 
     if (history.length === 0) {
-      await client.replyMessage(event.replyToken, {
+      await replySafely(event, {
         type: 'text',
         text: messages.HISTORY_NO_DATA,
       });
@@ -32,11 +32,11 @@ async function showHistory(event) {
 
     // Flex Messageを送信
     const flexMessage = buildHistoryFlexMessage(records);
-    await client.replyMessage(event.replyToken, flexMessage);
+    await replySafely(event, flexMessage);
 
   } catch (error) {
     console.error('履歴取得エラー:', error);
-    await client.replyMessage(event.replyToken, {
+    await replySafely(event, {
       type: 'text',
       text: messages.ERROR_GENERAL,
     });
