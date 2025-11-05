@@ -81,11 +81,16 @@ async function handleEvent(event) {
     );
 
     // ユーザーにエラーメッセージ送信
-    if (event.replyToken) {
-      await client.replyMessage(event.replyToken, {
-        type: 'text',
-        text: messages.ERROR_GENERAL,
-      });
+    // replyTokenは既に使用されている可能性があるため、pushMessageを使用
+    if (lineUserId && error.code !== 'ERR_BAD_REQUEST') {
+      try {
+        await client.pushMessage(lineUserId, {
+          type: 'text',
+          text: messages.ERROR_GENERAL,
+        });
+      } catch (pushError) {
+        console.error('エラーメッセージ送信失敗:', pushError);
+      }
     }
   }
 }
@@ -106,7 +111,7 @@ async function handleMessage(event) {
     await checkinController.startCheckin(event);
   } else if (text === '下校' || text === 'checkout') {
     await checkoutController.startCheckout(event);
-  } else if (text === '履歴' || text === 'history') {
+  } else if (text === '履歴' || text === '登校履歴' || text === 'history') {
     await historyController.showHistory(event);
   } else {
     // デフォルトメッセージ

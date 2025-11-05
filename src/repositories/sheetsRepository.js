@@ -123,9 +123,42 @@ async function getUserHistory(lineUserId, limit = 10) {
   return userRecords;
 }
 
+/**
+ * 現在使用中の座席一覧を取得
+ * @param {string} classroom - 教室名
+ * @returns {Promise<Array<number>>} 使用中の座席番号の配列
+ */
+async function getOccupiedSeats(classroom) {
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `${sheetName}!A:G`,
+  });
+
+  const rows = response.data.values;
+  if (!rows || rows.length <= 1) {
+    return [];
+  }
+
+  const occupiedSeats = [];
+
+  // 全行をチェック（ヘッダーをスキップ）
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    const [timestamp, studentName, userId, roomName, seatNumber, checkoutTime] = row;
+
+    // 同じ教室で、まだ下校していない座席を記録
+    if (roomName === classroom && !checkoutTime && seatNumber) {
+      occupiedSeats.push(parseInt(seatNumber));
+    }
+  }
+
+  return occupiedSeats;
+}
+
 module.exports = {
   appendCheckinRecord,
   getLatestCheckinRecord,
   updateCheckoutRecord,
   getUserHistory,
+  getOccupiedSeats,
 };

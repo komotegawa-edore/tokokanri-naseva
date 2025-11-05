@@ -1,8 +1,8 @@
 const { client } = require('../config/line');
 const attendanceService = require('../services/attendanceService');
+const classroomService = require('../services/classroomService');
 const sessionRepository = require('../repositories/sessionRepository');
 const messages = require('../constants/messages');
-const { classroomQuickReply, generateSeatQuickReply } = require('../constants/quickReplies');
 const { buildTextMessage, parsePostbackData } = require('../utils/messageBuilder');
 const { formatDate } = require('../utils/dateFormatter');
 
@@ -29,7 +29,8 @@ async function startCheckin(event) {
     'select_classroom'
   );
 
-  // 教室選択メッセージを送信
+  // 教室選択メッセージを送信（スプレッドシートから動的に生成）
+  const classroomQuickReply = await classroomService.generateClassroomQuickReply();
   await client.replyMessage(event.replyToken, buildTextMessage(
     messages.CHECKIN_SELECT_CLASSROOM,
     classroomQuickReply
@@ -54,8 +55,13 @@ async function selectClassroom(event, postbackData) {
     { classroom, startSeat, endSeat }
   );
 
-  // 座席番号選択メッセージを送信
-  const seatQuickReply = generateSeatQuickReply(startSeat, endSeat);
+  // 座席番号選択メッセージを送信（使用中の座席を除外）
+  const seatQuickReply = await classroomService.generateSeatQuickReply(
+    classroom,
+    startSeat,
+    endSeat,
+    0 // 最初のページ
+  );
   await client.replyMessage(event.replyToken, buildTextMessage(
     messages.CHECKIN_SELECT_SEAT(classroom),
     seatQuickReply
@@ -125,12 +131,18 @@ async function selectSeat(event, postbackData) {
  * 「もっと見る」処理
  */
 async function showMoreSeats(event, postbackData) {
-  const { start, end } = postbackData;
+  const { classroom, start, end, page } = postbackData;
   const startSeat = parseInt(start);
   const endSeat = parseInt(end);
+  const currentPage = parseInt(page) || 0;
 
-  // 次のページの座席番号を生成
-  const seatQuickReply = generateSeatQuickReply(startSeat, endSeat);
+  // 次のページの座席番号を生成（使用中の座席を除外）
+  const seatQuickReply = await classroomService.generateSeatQuickReply(
+    classroom,
+    startSeat,
+    endSeat,
+    currentPage
+  );
 
   await client.replyMessage(event.replyToken, buildTextMessage(
     '座席番号を選択してください',
