@@ -1,0 +1,31 @@
+# 環境変数
+.env
+.env.local
+.env.development
+.env.test
+
+# Node modules
+node_modules
+
+# ログ
+*.log
+logs
+
+# テスト
+tests
+*.test.js
+
+# ドキュメント（デプロイ不要）
+*.md
+!README.md
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+
+# その他
+.DS_Store

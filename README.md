@@ -15,6 +15,7 @@ LINE Bot上で動作する学習塾の登校・下校管理システムです。
 - **バックエンド**: Node.js + Express
 - **LINE**: Messaging API
 - **データベース**: Google Sheets + Supabase
+- **デプロイ**: Vercel（推奨）
 - **その他**: date-fns, dotenv
 
 ## セットアップ手順
@@ -187,6 +188,47 @@ nodemonが自動的にファイル変更を検知して再起動します。
 ### ログ確認
 
 ターミナルにリアルタイムでログが出力されます。
+
+## 本番環境へのデプロイ
+
+### Vercelへのデプロイ（推奨）
+
+最も簡単で無料のデプロイ方法です。
+
+**クイックスタート:**
+
+1. コードをGitHubにプッシュ
+   ```bash
+   git add .
+   git commit -m "Ready for deployment"
+   git push -u origin main
+   ```
+
+2. [Vercel](https://vercel.com/)にサインアップ
+
+3. プロジェクトをインポート
+   - 「Add New Project」をクリック
+   - GitHubリポジトリを選択
+   - 環境変数を設定
+   - デプロイ
+
+4. LINE DevelopersのWebhook URLを更新
+   ```
+   https://your-app.vercel.app/webhook
+   ```
+
+**詳細手順:**
+- 📘 [Vercelデプロイガイド](./VERCEL_DEPLOY_GUIDE.md)
+- 📘 [デプロイ方法比較](./DEPLOYMENT.md)
+
+### その他のデプロイ先
+
+- Heroku: $7/月〜
+- Google Cloud Run: 従量課金
+- AWS: 従量課金
+- VPS: $5/月〜
+
+詳細は [DEPLOYMENT.md](./DEPLOYMENT.md) を参照してください。
 
 ## ライセンス
 

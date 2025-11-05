@@ -36,26 +36,31 @@ app.post(
 // エラーハンドリングミドルウェア
 app.use(errorHandler);
 
-// サーバー起動
-app.listen(PORT, () => {
-  console.log(`✅ サーバーが起動しました: http://localhost:${PORT}`);
-  console.log(`環境: ${process.env.NODE_ENV || 'development'}`);
+// ローカル開発時のみサーバー起動
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`✅ サーバーが起動しました: http://localhost:${PORT}`);
+    console.log(`環境: ${process.env.NODE_ENV || 'development'}`);
 
-  // 期限切れセッション削除を定期実行（1時間ごと）
-  setInterval(() => {
-    sessionRepository.cleanupExpiredSessions()
-      .then(() => console.log('期限切れセッションを削除しました'))
-      .catch((err) => console.error('セッション削除エラー:', err));
-  }, 60 * 60 * 1000);
-});
+    // 期限切れセッション削除を定期実行（1時間ごと）
+    setInterval(() => {
+      sessionRepository.cleanupExpiredSessions()
+        .then(() => console.log('期限切れセッションを削除しました'))
+        .catch((err) => console.error('セッション削除エラー:', err));
+    }, 60 * 60 * 1000);
+  });
 
-// プロセス終了時の処理
-process.on('SIGINT', () => {
-  console.log('\nサーバーを終了します...');
-  process.exit(0);
-});
+  // プロセス終了時の処理
+  process.on('SIGINT', () => {
+    console.log('\nサーバーを終了します...');
+    process.exit(0);
+  });
 
-process.on('SIGTERM', () => {
-  console.log('\nサーバーを終了します...');
-  process.exit(0);
-});
+  process.on('SIGTERM', () => {
+    console.log('\nサーバーを終了します...');
+    process.exit(0);
+  });
+}
+
+// Vercel用にアプリをエクスポート
+module.exports = app;
