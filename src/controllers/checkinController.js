@@ -57,26 +57,47 @@ async function selectClassroom(event, postbackData) {
 
   // 座席範囲を解析
   const [startSeat, endSeat] = range.split('-').map(Number);
+  const totalSeats = endSeat - startSeat + 1;
 
-  // セッション更新（座席範囲選択ステップ）
-  await sessionRepository.createOrUpdateSession(
-    lineUserId,
-    'checkin',
-    'select_seat_range',
-    { classroom, startSeat, endSeat }
-  );
+  // 13席以下なら直接座席番号選択
+  if (totalSeats <= 13) {
+    await sessionRepository.createOrUpdateSession(
+      lineUserId,
+      'checkin',
+      'select_seat',
+      { classroom, startSeat, endSeat }
+    );
 
-  // 座席範囲選択メッセージを送信
-  const seatRangeQuickReply = await classroomService.generateSeatRangeQuickReply(
-    classroom,
-    startSeat,
-    endSeat
-  );
+    const seatQuickReply = await classroomService.generateSeatQuickReply(
+      classroom,
+      startSeat,
+      endSeat
+    );
 
-  await client.replyMessage(event.replyToken, buildTextMessage(
-    `${classroom}の座席範囲を選択してください`,
-    seatRangeQuickReply
-  ));
+    await client.replyMessage(event.replyToken, buildTextMessage(
+      messages.CHECKIN_SELECT_SEAT(classroom),
+      seatQuickReply
+    ));
+  } else {
+    // 13席を超える場合は範囲選択
+    await sessionRepository.createOrUpdateSession(
+      lineUserId,
+      'checkin',
+      'select_seat_range',
+      { classroom, startSeat, endSeat }
+    );
+
+    const seatRangeQuickReply = await classroomService.generateSeatRangeQuickReply(
+      classroom,
+      startSeat,
+      endSeat
+    );
+
+    await client.replyMessage(event.replyToken, buildTextMessage(
+      `${classroom}の座席範囲を選択してください`,
+      seatRangeQuickReply
+    ));
+  }
 }
 
 /**

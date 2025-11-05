@@ -40,14 +40,38 @@ function parseISOToJST(isoString) {
 
 /**
  * Google Sheetsの日時文字列（yyyy-MM-dd HH:mm:ss）をDateオブジェクトに変換
- * @param {string} dateString - 日時文字列
+ * @param {string|Date} dateString - 日時文字列またはDateオブジェクト
  * @returns {Date} Dateオブジェクト（JST）
  */
 function parseSheetDateString(dateString) {
+  // 既にDateオブジェクトの場合はそのまま返す
+  if (dateString instanceof Date) {
+    return dateString;
+  }
+
+  // 空文字列やundefinedの場合
+  if (!dateString) {
+    console.error('❌ parseSheetDateString: 空の日時文字列です');
+    return null;
+  }
+
   // "yyyy-MM-dd HH:mm:ss"形式の文字列をJSTとして解釈
   // この文字列は既にJST時刻で保存されているため、そのまま使用
-  const isoString = dateString.replace(' ', 'T') + '+09:00';
-  return new Date(isoString);
+  try {
+    const isoString = dateString.replace(' ', 'T') + '+09:00';
+    const date = new Date(isoString);
+
+    // 無効な日付かチェック
+    if (isNaN(date.getTime())) {
+      console.error(`❌ parseSheetDateString: 無効な日時文字列 "${dateString}"`);
+      return null;
+    }
+
+    return date;
+  } catch (error) {
+    console.error(`❌ parseSheetDateString: パースエラー "${dateString}"`, error);
+    return null;
+  }
 }
 
 /**

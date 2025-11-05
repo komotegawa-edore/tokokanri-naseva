@@ -60,7 +60,30 @@ async function checkout(lineUserId) {
   // 下校時刻と滞在時間を計算
   const checkoutTime = getCurrentJSTTime();
   const checkinTime = parseSheetDateString(checkinRecord.timestamp);
+
+  // パースエラーのチェック
+  if (!checkinTime) {
+    console.error('❌ 登校時刻のパースに失敗:', checkinRecord.timestamp);
+    return {
+      success: false,
+      message: 'invalid_checkin_time',
+    };
+  }
+
   const durationMinutes = getDurationInMinutes(checkinTime, checkoutTime);
+
+  // 計算結果のチェック
+  if (isNaN(durationMinutes) || durationMinutes < 0) {
+    console.error('❌ 滞在時間の計算に失敗:', {
+      checkinTime,
+      checkoutTime,
+      durationMinutes,
+    });
+    return {
+      success: false,
+      message: 'invalid_duration',
+    };
+  }
 
   // Google Sheetsを更新
   await sheetsRepository.updateCheckoutRecord(
