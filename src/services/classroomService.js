@@ -104,11 +104,12 @@ function divideSeatRange(startSeat, endSeat, maxItems = 13) {
     const end = Math.min(start + seatsPerDivision - 1, endSeat);
 
     if (start <= endSeat) {
+      const rangeSize = end - start + 1;
       ranges.push({
         start,
         end,
         label: `${start}〜${end}番`,
-        isFinal: false,
+        isFinal: rangeSize <= maxItems,
       });
     }
   }
