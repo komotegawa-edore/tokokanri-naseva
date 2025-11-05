@@ -7,8 +7,10 @@ module.exports = {
   CHECKIN_SUCCESS: (classroom, seatNumber, time) =>
     `✅ 登校を記録しました！\n\n教室: ${classroom}\n座席: ${seatNumber}番\n時刻: ${time}\n\n今日も頑張りましょう！`,
   CHECKIN_ALREADY: '既に登校記録があります。下校してから再度登校してください。',
-  CHECKIN_SEAT_TAKEN: (classroom, seatNumber) =>
-    `${classroom}の${seatNumber}番は他の人が使用中です。別の座席を選択してください。`,
+  CHECKIN_SEAT_TAKEN: (classroom, seatNumber) => {
+    const seatText = Number.isFinite(seatNumber) ? `${seatNumber}番` : 'その座席';
+    return `${classroom}の${seatText}は他の人が使用中です。別の座席を選択してください。`;
+  },
 
   // 下校フロー
   CHECKOUT_CONFIRM: '下校しますか？',

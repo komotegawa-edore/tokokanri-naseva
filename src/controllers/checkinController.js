@@ -185,13 +185,34 @@ async function selectSeat(event, postbackData) {
     );
 
     if (!result.success) {
-      const errorMessage = result.message === 'seat_taken'
-        ? messages.CHECKIN_SEAT_TAKEN(classroom, seatNumber)
-        : messages.CHECKIN_ALREADY;
+      if (result.message === 'seat_taken') {
+        const { startSeat, endSeat } = session.session_data || {};
 
+        if (Number.isFinite(startSeat) && Number.isFinite(endSeat)) {
+          const seatQuickReply = await classroomService.generateSeatQuickReply(
+            classroom,
+            startSeat,
+            endSeat
+          );
+
+          await client.replyMessage(event.replyToken, buildTextMessage(
+            messages.CHECKIN_SEAT_TAKEN(classroom, seatNumber),
+            seatQuickReply
+          ));
+        } else {
+          await client.replyMessage(event.replyToken, {
+            type: 'text',
+            text: messages.CHECKIN_SEAT_TAKEN(classroom, seatNumber),
+          });
+        }
+        return;
+      }
+
+      // 既に登校中の場合はセッションを破棄して終了
+      await sessionRepository.deleteSession(lineUserId, 'checkin');
       await client.replyMessage(event.replyToken, {
         type: 'text',
-        text: errorMessage,
+        text: messages.CHECKIN_ALREADY,
       });
       return;
     }
