@@ -71,15 +71,64 @@ async function getSession(lineUserId, sessionType) {
 /**
  * セッションを削除
  * @param {string} lineUserId - LINE User ID
- * @param {string} sessionType - セッションタイプ
+ * @param {string} sessionType - セッションタイプ（オプション）
  * @returns {Promise<void>}
  */
-async function deleteSession(lineUserId, sessionType) {
-  await supabase
+async function deleteSession(lineUserId, sessionType = null) {
+  const query = supabase
     .from('user_sessions')
     .delete()
+    .eq('line_user_id', lineUserId);
+
+  if (sessionType) {
+    query.eq('session_type', sessionType);
+  }
+
+  await query;
+}
+
+/**
+ * セッションを更新
+ * @param {string} lineUserId - LINE User ID
+ * @param {string} sessionType - セッションタイプ
+ * @param {string} currentStep - 現在のステップ
+ * @param {object} sessionData - セッションデータ
+ * @returns {Promise<object>} セッション情報
+ */
+async function updateSession(lineUserId, sessionType, currentStep, sessionData = {}) {
+  const expiresAt = new Date(Date.now() + SESSION_TIMEOUT_MINUTES * 60 * 1000);
+
+  const { data, error } = await supabase
+    .from('user_sessions')
+    .update({
+      current_step: currentStep,
+      session_data: sessionData,
+      expires_at: expiresAt,
+      updated_at: new Date(),
+    })
     .eq('line_user_id', lineUserId)
-    .eq('session_type', sessionType);
+    .eq('session_type', sessionType)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('セッション更新エラー:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+/**
+ * セッションを作成
+ * @param {string} lineUserId - LINE User ID
+ * @param {string} sessionType - セッションタイプ
+ * @param {string} currentStep - 現在のステップ
+ * @param {object} sessionData - セッションデータ
+ * @returns {Promise<object>} セッション情報
+ */
+async function createSession(lineUserId, sessionType, currentStep, sessionData = {}) {
+  return createOrUpdateSession(lineUserId, sessionType, currentStep, sessionData);
 }
 
 /**
@@ -95,6 +144,8 @@ async function cleanupExpiredSessions() {
 
 module.exports = {
   createOrUpdateSession,
+  createSession,
+  updateSession,
   getSession,
   deleteSession,
   cleanupExpiredSessions,

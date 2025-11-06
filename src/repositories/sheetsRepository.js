@@ -7,12 +7,14 @@ const { formatDate } = require('../utils/dateFormatter');
  * @returns {Promise<void>}
  */
 async function appendCheckinRecord(record) {
-  const { timestamp, studentName, lineUserId, classroom, seatNumber } = record;
+  const { timestamp, studentName, fullName, grade, lineUserId, classroom, seatNumber } = record;
 
   const values = [
     [
       formatDate(timestamp, 'yyyy-MM-dd HH:mm:ss'),
       studentName,
+      fullName || '',
+      grade || '',
       lineUserId,
       classroom,
       seatNumber,
@@ -23,7 +25,7 @@ async function appendCheckinRecord(record) {
 
   await sheets.spreadsheets.values.append({
     spreadsheetId,
-    range: `${sheetName}!A:G`,
+    range: `${sheetName}!A:I`,
     valueInputOption: 'USER_ENTERED',
     resource: { values },
   });
@@ -37,7 +39,7 @@ async function appendCheckinRecord(record) {
 async function getLatestCheckinRecord(lineUserId) {
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `${sheetName}!A:G`,
+    range: `${sheetName}!A:I`,
   });
 
   const rows = response.data.values;
@@ -48,13 +50,15 @@ async function getLatestCheckinRecord(lineUserId) {
   // 最後の行から順に検索（最新のレコードを探す）
   for (let i = rows.length - 1; i >= 1; i--) {
     const row = rows[i];
-    const [timestamp, studentName, userId, classroom, seatNumber, checkoutTime] = row;
+    const [timestamp, studentName, fullName, grade, userId, classroom, seatNumber, checkoutTime] = row;
 
     if (userId === lineUserId && !checkoutTime) {
       return {
         rowIndex: i + 1, // Sheetsは1始まり
         timestamp,
         studentName,
+        fullName: fullName || '',
+        grade: grade || '',
         lineUserId: userId,
         classroom,
         seatNumber: parseInt(seatNumber, 10),
@@ -80,7 +84,7 @@ async function updateCheckoutRecord(rowIndex, checkoutTime, durationMinutes) {
 
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: `${sheetName}!F${rowIndex}:G${rowIndex}`,
+    range: `${sheetName}!H${rowIndex}:I${rowIndex}`,
     valueInputOption: 'USER_ENTERED',
     resource: { values },
   });
@@ -95,7 +99,7 @@ async function updateCheckoutRecord(rowIndex, checkoutTime, durationMinutes) {
 async function getUserHistory(lineUserId, limit = 10) {
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `${sheetName}!A:G`,
+    range: `${sheetName}!A:I`,
   });
 
   const rows = response.data.values;
@@ -106,13 +110,15 @@ async function getUserHistory(lineUserId, limit = 10) {
   const userRecords = [];
   for (let i = rows.length - 1; i >= 1 && userRecords.length < limit; i--) {
     const row = rows[i];
-    const [timestamp, studentName, userId, classroom, seatNumber, checkoutTime, duration] = row;
+    const [timestamp, studentName, fullName, grade, userId, classroom, seatNumber, checkoutTime, duration] = row;
 
     if (userId === lineUserId) {
       const hasDurationValue = duration !== undefined && duration !== null && duration !== '';
       userRecords.push({
         timestamp,
         studentName,
+        fullName: fullName || '',
+        grade: grade || '',
         classroom,
         seatNumber: parseInt(seatNumber, 10),
         checkoutTime,
@@ -132,7 +138,7 @@ async function getUserHistory(lineUserId, limit = 10) {
 async function getOccupiedSeats(classroom) {
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `${sheetName}!A:G`,
+    range: `${sheetName}!A:I`,
   });
 
   const rows = response.data.values;
@@ -145,7 +151,7 @@ async function getOccupiedSeats(classroom) {
   // 全行をチェック（ヘッダーをスキップ）
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    const [timestamp, studentName, userId, roomName, seatNumber, checkoutTime] = row;
+    const [timestamp, studentName, fullName, grade, userId, roomName, seatNumber, checkoutTime] = row;
 
     // 同じ教室で、まだ下校していない座席を記録
     if (roomName === classroom && !checkoutTime && seatNumber) {

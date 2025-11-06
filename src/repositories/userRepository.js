@@ -68,7 +68,37 @@ async function getUserByLineId(lineUserId) {
   return data;
 }
 
+/**
+ * ユーザーの登録を完了（フルネームと学年を登録）
+ * @param {string} lineUserId - LINE User ID
+ * @param {string} fullName - フルネーム
+ * @param {string} grade - 学年
+ * @returns {Promise<object>} 更新されたユーザー情報
+ */
+async function completeRegistration(lineUserId, fullName, grade) {
+  const { data, error } = await supabase
+    .from('users')
+    .update({
+      full_name: fullName,
+      grade: grade,
+      registration_completed: true,
+      updated_at: new Date(),
+    })
+    .eq('line_user_id', lineUserId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('ユーザー登録完了エラー:', error);
+    throw error;
+  }
+
+  console.log('✅ ユーザー登録完了:', lineUserId, fullName, grade);
+  return data;
+}
+
 module.exports = {
   getOrCreateUser,
   getUserByLineId,
+  completeRegistration,
 };

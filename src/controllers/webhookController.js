@@ -1,8 +1,10 @@
 const checkinController = require('./checkinController');
 const checkoutController = require('./checkoutController');
 const historyController = require('./historyController');
+const registrationController = require('./registrationController');
 const webhookLogRepository = require('../repositories/webhookLogRepository');
 const processedWebhooksRepository = require('../repositories/processedWebhooksRepository');
+const sessionRepository = require('../repositories/sessionRepository');
 const { parsePostbackData } = require('../utils/messageBuilder');
 const messages = require('../constants/messages');
 const { replySafely } = require('../utils/lineReplyHelper');
@@ -115,13 +117,35 @@ async function handleMessage(event) {
   const text = event.message.text.trim();
   const lineUserId = event.source.userId;
 
+  // 登録フロー中の場合は、セッションに基づいて処理
+  const registrationSession = await sessionRepository.getSession(lineUserId, 'registration');
+  if (registrationSession) {
+    // 登録フロー中
+    if (registrationSession.current_step === 'input_full_name') {
+      await registrationController.handleFullNameInput(event, registrationSession);
+      return;
+    }
+  }
+
   // テキストコマンド処理（リッチメニューを使わない場合のフォールバック）
   if (text === '登校' || text === 'checkin') {
-    await checkinController.startCheckin(event);
+    // 登録済みチェック
+    const isRegistered = await registrationController.checkAndStartRegistration(event);
+    if (isRegistered) {
+      await checkinController.startCheckin(event);
+    }
   } else if (text === '下校' || text === 'checkout') {
-    await checkoutController.startCheckout(event);
+    // 登録済みチェック
+    const isRegistered = await registrationController.checkAndStartRegistration(event);
+    if (isRegistered) {
+      await checkoutController.startCheckout(event);
+    }
   } else if (text === '履歴' || text === '登校履歴' || text === 'history') {
-    await historyController.showHistory(event);
+    // 登録済みチェック
+    const isRegistered = await registrationController.checkAndStartRegistration(event);
+    if (isRegistered) {
+      await historyController.showHistory(event);
+    }
   } else {
     // デフォルトメッセージ
     await replySafely(event, {
@@ -139,6 +163,23 @@ async function handlePostback(event) {
   const action = postbackData.action;
 
   console.log('Postback受信:', action, postbackData);
+
+  // 登録フロー中の場合
+  const lineUserId = event.source.userId;
+  const registrationSession = await sessionRepository.getSession(lineUserId, 'registration');
+  if (registrationSession && action === 'select_grade') {
+    await registrationController.handleGradeSelection(event, postbackData, registrationSession);
+    return;
+  }
+
+  // 登録済みチェックが必要なアクション
+  const requiresRegistration = ['checkin', 'checkout', 'history'];
+  if (requiresRegistration.includes(action)) {
+    const isRegistered = await registrationController.checkAndStartRegistration(event);
+    if (!isRegistered) {
+      return;
+    }
+  }
 
   switch (action) {
     // 登校フロー
@@ -188,11 +229,9 @@ async function handleFollow(event) {
   const lineUserId = event.source.userId;
   console.log('新しいユーザーが友だち追加しました:', lineUserId);
 
-  // ウェルカムメッセージ送信
-  await replySafely(event, {
-    type: 'text',
-    text: messages.WELCOME,
-  });
+  // 登録済みチェック（未登録なら登録フローを開始）
+  // 公式LINE側でウェルカムメッセージを設定しているため、こちらでは送信しない
+  await registrationController.checkAndStartRegistration(event);
 }
 
 module.exports = {

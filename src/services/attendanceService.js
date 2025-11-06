@@ -32,11 +32,16 @@ async function checkin(lineUserId, displayName, classroom, seatNumber) {
   // ユーザー情報を取得または作成
   await userRepository.getOrCreateUser(lineUserId, displayName);
 
+  // ユーザーの詳細情報を取得（フルネームと学年を含む）
+  const user = await userRepository.getUserByLineId(lineUserId);
+
   // 登校記録を追加
   const timestamp = getCurrentJSTTime();
   await sheetsRepository.appendCheckinRecord({
     timestamp,
     studentName: displayName,
+    fullName: user?.full_name || '',
+    grade: user?.grade || '',
     lineUserId,
     classroom,
     seatNumber,

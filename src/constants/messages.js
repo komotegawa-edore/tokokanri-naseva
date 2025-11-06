@@ -26,6 +26,9 @@ module.exports = {
   HISTORY_HEADER: '📊 登校履歴',
   HISTORY_NO_DATA: 'まだ登校記録がありません。',
 
-  // ウェルカムメッセージ
-  WELCOME: '学習塾登校管理システムへようこそ！\n\nリッチメニューから操作してください。\n・登校: 教室に着いたら押してください\n・下校: 帰るときに押してください\n・登校履歴: あなたの記録を確認できます',
+  // 初回登録フロー
+  REGISTRATION_START: '初めてのご利用ありがとうございます！\n\n最初にあなたのフルネームを教えてください。\n\n例: 山田太郎',
+  REGISTRATION_GRADE_SELECT: (fullName) => `${fullName}さん、ようこそ！\n\n次に学年を選択してください。`,
+  REGISTRATION_COMPLETE: (fullName, grade) => `✅ 登録が完了しました！\n\nお名前: ${fullName}\n学年: ${grade}\n\nリッチメニューから「登校」を押して利用を開始してください。`,
+  REGISTRATION_INVALID_NAME: '申し訳ございません。名前が入力されていないようです。\n\nフルネームを入力してください。\n例: 山田太郎',
 };
