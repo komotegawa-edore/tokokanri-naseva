@@ -50,7 +50,19 @@ async function getLatestCheckinRecord(lineUserId) {
   // 最後の行から順に検索（最新のレコードを探す）
   for (let i = rows.length - 1; i >= 1; i--) {
     const row = rows[i];
-    const [timestamp, studentName, fullName, grade, userId, classroom, seatNumber, checkoutTime] = row;
+
+    // 旧フォーマット（7列）と新フォーマット（9列）の両方に対応
+    let timestamp, studentName, fullName, grade, userId, classroom, seatNumber, checkoutTime;
+
+    if (row.length >= 9) {
+      // 新フォーマット: A:登校時刻 B:表示名 C:フルネーム D:学年 E:ID F:教室 G:座席 H:下校 I:滞在
+      [timestamp, studentName, fullName, grade, userId, classroom, seatNumber, checkoutTime] = row;
+    } else {
+      // 旧フォーマット: A:登校時刻 B:表示名 C:ID D:教室 E:座席 F:下校 G:滞在
+      [timestamp, studentName, userId, classroom, seatNumber, checkoutTime] = row;
+      fullName = '';
+      grade = '';
+    }
 
     if (userId === lineUserId && !checkoutTime) {
       return {
@@ -78,13 +90,30 @@ async function getLatestCheckinRecord(lineUserId) {
  * @returns {Promise<void>}
  */
 async function updateCheckoutRecord(rowIndex, checkoutTime, durationMinutes) {
+  // まず、その行のデータを取得してフォーマットを判定
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `${sheetName}!${rowIndex}:${rowIndex}`,
+  });
+
+  const row = response.data.values?.[0] || [];
   const values = [
     [formatDate(checkoutTime, 'yyyy-MM-dd HH:mm:ss'), durationMinutes],
   ];
 
+  // 行の列数に基づいてフォーマットを判定
+  let range;
+  if (row.length >= 9) {
+    // 新フォーマット: H列とI列
+    range = `${sheetName}!H${rowIndex}:I${rowIndex}`;
+  } else {
+    // 旧フォーマット: F列とG列
+    range = `${sheetName}!F${rowIndex}:G${rowIndex}`;
+  }
+
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: `${sheetName}!H${rowIndex}:I${rowIndex}`,
+    range,
     valueInputOption: 'USER_ENTERED',
     resource: { values },
   });
@@ -110,7 +139,19 @@ async function getUserHistory(lineUserId, limit = 10) {
   const userRecords = [];
   for (let i = rows.length - 1; i >= 1 && userRecords.length < limit; i--) {
     const row = rows[i];
-    const [timestamp, studentName, fullName, grade, userId, classroom, seatNumber, checkoutTime, duration] = row;
+
+    // 旧フォーマット（7列）と新フォーマット（9列）の両方に対応
+    let timestamp, studentName, fullName, grade, userId, classroom, seatNumber, checkoutTime, duration;
+
+    if (row.length >= 9) {
+      // 新フォーマット: A:登校時刻 B:表示名 C:フルネーム D:学年 E:ID F:教室 G:座席 H:下校 I:滞在
+      [timestamp, studentName, fullName, grade, userId, classroom, seatNumber, checkoutTime, duration] = row;
+    } else {
+      // 旧フォーマット: A:登校時刻 B:表示名 C:ID D:教室 E:座席 F:下校 G:滞在
+      [timestamp, studentName, userId, classroom, seatNumber, checkoutTime, duration] = row;
+      fullName = '';
+      grade = '';
+    }
 
     if (userId === lineUserId) {
       const hasDurationValue = duration !== undefined && duration !== null && duration !== '';
@@ -151,7 +192,21 @@ async function getOccupiedSeats(classroom) {
   // 全行をチェック（ヘッダーをスキップ）
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    const [timestamp, studentName, fullName, grade, userId, roomName, seatNumber, checkoutTime] = row;
+
+    // 旧フォーマット（7列）と新フォーマット（9列）の両方に対応
+    let roomName, seatNumber, checkoutTime;
+
+    if (row.length >= 9) {
+      // 新フォーマット: A:登校時刻 B:表示名 C:フルネーム D:学年 E:ID F:教室 G:座席 H:下校 I:滞在
+      roomName = row[5]; // F列
+      seatNumber = row[6]; // G列
+      checkoutTime = row[7]; // H列
+    } else {
+      // 旧フォーマット: A:登校時刻 B:表示名 C:ID D:教室 E:座席 F:下校 G:滞在
+      roomName = row[3]; // D列
+      seatNumber = row[4]; // E列
+      checkoutTime = row[5]; // F列
+    }
 
     // 同じ教室で、まだ下校していない座席を記録
     if (roomName === classroom && !checkoutTime && seatNumber) {
