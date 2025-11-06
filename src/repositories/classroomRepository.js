@@ -1,4 +1,5 @@
 const { sheets, spreadsheetId } = require('../config/googleSheets');
+const supabase = require('../config/supabase');
 
 const CLASSROOM_SHEET_NAME = 'Settings';
 
@@ -77,8 +78,50 @@ async function getClassroomByName(classroomName) {
   return classrooms.find(c => c.name === classroomName) || null;
 }
 
+/**
+ * Supabaseから教室情報を名前で取得
+ * @param {string} classroomName - 教室名
+ * @returns {Promise<object|null>} 教室情報またはnull
+ */
+async function getSupabaseClassroomByName(classroomName) {
+  const { data, error } = await supabase
+    .from('classrooms')
+    .select('*')
+    .eq('name', classroomName)
+    .eq('is_active', true)
+    .single();
+
+  if (error && error.code !== 'PGRST116') {
+    console.error('教室取得エラー:', error);
+    return null;
+  }
+
+  return data;
+}
+
+/**
+ * Supabaseから全教室を取得
+ * @returns {Promise<Array>} 教室一覧
+ */
+async function getAllSupabaseClassrooms() {
+  const { data, error } = await supabase
+    .from('classrooms')
+    .select('*')
+    .eq('is_active', true)
+    .order('display_order', { ascending: true });
+
+  if (error) {
+    console.error('教室一覧取得エラー:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
 module.exports = {
   getClassroomSettings,
   getClassroomByName,
   getDefaultClassrooms,
+  getSupabaseClassroomByName,
+  getAllSupabaseClassrooms,
 };

@@ -1,5 +1,7 @@
 const sheetsRepository = require('../repositories/sheetsRepository');
 const userRepository = require('../repositories/userRepository');
+const attendanceRepository = require('../repositories/attendanceRepository');
+const classroomRepository = require('../repositories/classroomRepository');
 const { getCurrentJSTTime, parseSheetDateString, getDurationInMinutes, formatDuration } = require('../utils/dateFormatter');
 
 /**
@@ -11,8 +13,8 @@ const { getCurrentJSTTime, parseSheetDateString, getDurationInMinutes, formatDur
  * @returns {Promise<object>} 登校結果
  */
 async function checkin(lineUserId, displayName, classroom, seatNumber) {
-  // 既に登校中かチェック
-  const existingCheckin = await sheetsRepository.getLatestCheckinRecord(lineUserId);
+  // Supabaseで既に登校中かチェック
+  const existingCheckin = await attendanceRepository.getActiveCheckin(lineUserId);
   if (existingCheckin) {
     return {
       success: false,
@@ -20,7 +22,7 @@ async function checkin(lineUserId, displayName, classroom, seatNumber) {
     };
   }
 
-  // 座席の重複利用を防止
+  // 座席の重複利用を防止（Google Sheets）
   const occupiedSeats = await sheetsRepository.getOccupiedSeats(classroom);
   if (occupiedSeats.includes(seatNumber)) {
     return {
@@ -35,8 +37,28 @@ async function checkin(lineUserId, displayName, classroom, seatNumber) {
   // ユーザーの詳細情報を取得（フルネームと学年を含む）
   const user = await userRepository.getUserByLineId(lineUserId);
 
-  // 登校記録を追加
+  if (!user) {
+    console.error('❌ ユーザー情報が取得できませんでした:', lineUserId);
+    return {
+      success: false,
+      message: 'user_not_found',
+    };
+  }
+
+  // 教室情報をSupabaseから取得
+  const classroomInfo = await classroomRepository.getSupabaseClassroomByName(classroom);
+
+  // 登校記録をSupabaseに保存
   const timestamp = getCurrentJSTTime();
+  await attendanceRepository.createCheckin(
+    user.id,
+    lineUserId,
+    classroomInfo?.id || null,
+    classroom,
+    seatNumber
+  );
+
+  // Google Sheetsにも記録（既存の仕組みを維持）
   await sheetsRepository.appendCheckinRecord({
     timestamp,
     studentName: displayName,
@@ -61,56 +83,42 @@ async function checkin(lineUserId, displayName, classroom, seatNumber) {
  * @returns {Promise<object>} 下校結果
  */
 async function checkout(lineUserId) {
-  // 最新の登校記録を取得
-  const checkinRecord = await sheetsRepository.getLatestCheckinRecord(lineUserId);
+  // Supabaseから最新の未下校記録を取得
+  const activeCheckin = await attendanceRepository.getActiveCheckin(lineUserId);
 
-  if (!checkinRecord) {
+  if (!activeCheckin) {
     return {
       success: false,
       message: 'not_checkedin',
     };
   }
 
-  // 下校時刻と滞在時間を計算
-  const checkoutTime = getCurrentJSTTime();
-  const checkinTime = parseSheetDateString(checkinRecord.timestamp);
+  // Supabaseの記録を更新
+  const updatedRecord = await attendanceRepository.updateCheckout(activeCheckin.id);
 
-  // パースエラーのチェック
-  if (!checkinTime) {
-    console.error('❌ 登校時刻のパースに失敗:', checkinRecord.timestamp);
-    return {
-      success: false,
-      message: 'invalid_checkin_time',
-    };
+  // Google Sheetsも更新（既存の仕組みを維持）
+  const sheetsCheckinRecord = await sheetsRepository.getLatestCheckinRecord(lineUserId);
+  if (sheetsCheckinRecord) {
+    const checkoutTime = getCurrentJSTTime();
+    const checkinTime = parseSheetDateString(sheetsCheckinRecord.timestamp);
+
+    if (checkinTime) {
+      const durationMinutes = getDurationInMinutes(checkinTime, checkoutTime);
+      if (!isNaN(durationMinutes) && durationMinutes >= 0) {
+        await sheetsRepository.updateCheckoutRecord(
+          sheetsCheckinRecord.rowIndex,
+          checkoutTime,
+          durationMinutes
+        );
+      }
+    }
   }
-
-  const durationMinutes = getDurationInMinutes(checkinTime, checkoutTime);
-
-  // 計算結果のチェック
-  if (isNaN(durationMinutes) || durationMinutes < 0) {
-    console.error('❌ 滞在時間の計算に失敗:', {
-      checkinTime,
-      checkoutTime,
-      durationMinutes,
-    });
-    return {
-      success: false,
-      message: 'invalid_duration',
-    };
-  }
-
-  // Google Sheetsを更新
-  await sheetsRepository.updateCheckoutRecord(
-    checkinRecord.rowIndex,
-    checkoutTime,
-    durationMinutes
-  );
 
   return {
     success: true,
-    checkoutTime,
-    durationMinutes,
-    durationFormatted: formatDuration(durationMinutes),
+    checkoutTime: updatedRecord.checkout_time,
+    durationMinutes: updatedRecord.duration_minutes,
+    durationFormatted: formatDuration(updatedRecord.duration_minutes),
   };
 }
 
@@ -121,6 +129,14 @@ async function checkout(lineUserId) {
  * @returns {Promise<Array>} 登校履歴
  */
 async function getHistory(lineUserId, limit = 10) {
+  // Supabaseから履歴を取得
+  const supabaseHistory = await attendanceRepository.getAttendanceHistory(lineUserId, limit);
+
+  // Supabaseに履歴がある場合はそれを使用、なければGoogle Sheetsから取得
+  if (supabaseHistory && supabaseHistory.length > 0) {
+    return supabaseHistory;
+  }
+
   return await sheetsRepository.getUserHistory(lineUserId, limit);
 }
 
@@ -130,8 +146,9 @@ async function getHistory(lineUserId, limit = 10) {
  * @returns {Promise<boolean>} 登校中ならtrue
  */
 async function isCheckedIn(lineUserId) {
-  const checkinRecord = await sheetsRepository.getLatestCheckinRecord(lineUserId);
-  return !!checkinRecord;
+  // Supabaseで未下校記録をチェック
+  const activeCheckin = await attendanceRepository.getActiveCheckin(lineUserId);
+  return !!activeCheckin;
 }
 
 module.exports = {
