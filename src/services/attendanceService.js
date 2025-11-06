@@ -50,24 +50,31 @@ async function checkin(lineUserId, displayName, classroom, seatNumber) {
 
   // 登校記録をSupabaseに保存
   const timestamp = getCurrentJSTTime();
-  await attendanceRepository.createCheckin(
+  const supabaseRecord = await attendanceRepository.createCheckin(
     user.id,
     lineUserId,
     classroomInfo?.id || null,
     classroom,
     seatNumber
   );
+  console.log('✅ Supabase登校記録作成:', supabaseRecord.id);
 
   // Google Sheetsにも記録（既存の仕組みを維持）
-  await sheetsRepository.appendCheckinRecord({
-    timestamp,
-    studentName: displayName,
-    fullName: user?.full_name || '',
-    grade: user?.grade || '',
-    lineUserId,
-    classroom,
-    seatNumber,
-  });
+  try {
+    await sheetsRepository.appendCheckinRecord({
+      timestamp,
+      studentName: displayName,
+      fullName: user?.full_name || '',
+      grade: user?.grade || '',
+      lineUserId,
+      classroom,
+      seatNumber,
+    });
+    console.log('✅ Google Sheets登校記録作成');
+  } catch (error) {
+    console.error('❌ Google Sheets登校記録作成エラー:', error);
+    // Google Sheetsの追加に失敗してもSupabaseは保存済みなので続行
+  }
 
   return {
     success: true,
@@ -95,23 +102,40 @@ async function checkout(lineUserId) {
 
   // Supabaseの記録を更新
   const updatedRecord = await attendanceRepository.updateCheckout(activeCheckin.id);
+  console.log('✅ Supabase下校記録更新完了:', updatedRecord.id, `${updatedRecord.duration_minutes}分`);
 
   // Google Sheetsも更新（既存の仕組みを維持）
-  const sheetsCheckinRecord = await sheetsRepository.getLatestCheckinRecord(lineUserId);
-  if (sheetsCheckinRecord) {
-    const checkoutTime = getCurrentJSTTime();
-    const checkinTime = parseSheetDateString(sheetsCheckinRecord.timestamp);
+  try {
+    const sheetsCheckinRecord = await sheetsRepository.getLatestCheckinRecord(lineUserId);
+    console.log('📊 Google Sheets未下校記録:', sheetsCheckinRecord);
 
-    if (checkinTime) {
-      const durationMinutes = getDurationInMinutes(checkinTime, checkoutTime);
-      if (!isNaN(durationMinutes) && durationMinutes >= 0) {
-        await sheetsRepository.updateCheckoutRecord(
-          sheetsCheckinRecord.rowIndex,
-          checkoutTime,
-          durationMinutes
-        );
+    if (sheetsCheckinRecord) {
+      const checkoutTime = getCurrentJSTTime();
+      const checkinTime = parseSheetDateString(sheetsCheckinRecord.timestamp);
+
+      if (!checkinTime) {
+        console.error('❌ Google Sheets登校時刻のパースに失敗:', sheetsCheckinRecord.timestamp);
+      } else {
+        const durationMinutes = getDurationInMinutes(checkinTime, checkoutTime);
+        console.log(`⏱️  滞在時間計算: ${durationMinutes}分`);
+
+        if (isNaN(durationMinutes) || durationMinutes < 0) {
+          console.error('❌ 滞在時間が不正:', { checkinTime, checkoutTime, durationMinutes });
+        } else {
+          await sheetsRepository.updateCheckoutRecord(
+            sheetsCheckinRecord.rowIndex,
+            checkoutTime,
+            durationMinutes
+          );
+          console.log('✅ Google Sheets下校記録更新完了:', sheetsCheckinRecord.rowIndex);
+        }
       }
+    } else {
+      console.warn('⚠️  Google Sheetsに未下校記録が見つかりません');
     }
+  } catch (error) {
+    console.error('❌ Google Sheets更新エラー:', error);
+    // Google Sheetsの更新に失敗してもSupabaseは更新済みなので続行
   }
 
   return {
