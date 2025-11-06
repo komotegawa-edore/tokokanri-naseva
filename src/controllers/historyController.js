@@ -23,12 +23,19 @@ async function showHistory(event) {
     }
 
     // Flex Message用にデータ整形
-    const records = history.map((record) => ({
-      date: record.timestamp.split(' ')[0], // 日付部分のみ
-      duration: record.durationMinutes
-        ? formatDuration(record.durationMinutes)
-        : '登校中',
-    }));
+    const records = history.map((record) => {
+      // Supabaseデータ（checkin_time）とGoogle Sheetsデータ（timestamp）の両方に対応
+      const dateTimeStr = record.checkin_time || record.timestamp;
+      const date = dateTimeStr ? dateTimeStr.split('T')[0].split(' ')[0] : '日付不明';
+      const durationMinutes = record.duration_minutes ?? record.durationMinutes;
+
+      return {
+        date,
+        duration: durationMinutes
+          ? formatDuration(durationMinutes)
+          : '登校中',
+      };
+    });
 
     // Flex Messageを送信
     const flexMessage = buildHistoryFlexMessage(records);
