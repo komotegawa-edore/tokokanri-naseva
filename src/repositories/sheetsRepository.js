@@ -51,15 +51,34 @@ async function getLatestCheckinRecord(lineUserId) {
   for (let i = rows.length - 1; i >= 1; i--) {
     const row = rows[i];
 
-    // 旧フォーマット（7列）と新フォーマット（9列）の両方に対応
-    let timestamp, studentName, fullName, grade, userId, classroom, seatNumber, checkoutTime;
+    // 空の行をスキップ
+    if (!row || row.length === 0) {
+      continue;
+    }
 
-    if (row.length >= 9) {
+    // フォーマット判定: E列（index 4）にLINE User IDがあれば新フォーマット
+    // LINE User IDは"U"で始まる
+    let timestamp, studentName, fullName, grade, userId, classroom, seatNumber, checkoutTime;
+    const isNewFormat = row[4] && typeof row[4] === 'string' && row[4].startsWith('U');
+
+    if (isNewFormat) {
       // 新フォーマット: A:登校時刻 B:表示名 C:フルネーム D:学年 E:ID F:教室 G:座席 H:下校 I:滞在
-      [timestamp, studentName, fullName, grade, userId, classroom, seatNumber, checkoutTime] = row;
+      timestamp = row[0];
+      studentName = row[1];
+      fullName = row[2] || '';
+      grade = row[3] || '';
+      userId = row[4];
+      classroom = row[5];
+      seatNumber = row[6];
+      checkoutTime = row[7] || '';
     } else {
       // 旧フォーマット: A:登校時刻 B:表示名 C:ID D:教室 E:座席 F:下校 G:滞在
-      [timestamp, studentName, userId, classroom, seatNumber, checkoutTime] = row;
+      timestamp = row[0];
+      studentName = row[1];
+      userId = row[2];
+      classroom = row[3];
+      seatNumber = row[4];
+      checkoutTime = row[5] || '';
       fullName = '';
       grade = '';
     }
@@ -101,9 +120,11 @@ async function updateCheckoutRecord(rowIndex, checkoutTime, durationMinutes) {
     [formatDate(checkoutTime, 'yyyy-MM-dd HH:mm:ss'), durationMinutes],
   ];
 
-  // 行の列数に基づいてフォーマットを判定
+  // フォーマット判定: E列（index 4）にLINE User IDがあれば新フォーマット
   let range;
-  if (row.length >= 9) {
+  const isNewFormat = row[4] && typeof row[4] === 'string' && row[4].startsWith('U');
+
+  if (isNewFormat) {
     // 新フォーマット: H列とI列
     range = `${sheetName}!H${rowIndex}:I${rowIndex}`;
   } else {
@@ -140,15 +161,35 @@ async function getUserHistory(lineUserId, limit = 10) {
   for (let i = rows.length - 1; i >= 1 && userRecords.length < limit; i--) {
     const row = rows[i];
 
-    // 旧フォーマット（7列）と新フォーマット（9列）の両方に対応
-    let timestamp, studentName, fullName, grade, userId, classroom, seatNumber, checkoutTime, duration;
+    // 空の行をスキップ
+    if (!row || row.length === 0) {
+      continue;
+    }
 
-    if (row.length >= 9) {
+    // フォーマット判定: E列（index 4）にLINE User IDがあれば新フォーマット
+    let timestamp, studentName, fullName, grade, userId, classroom, seatNumber, checkoutTime, duration;
+    const isNewFormat = row[4] && typeof row[4] === 'string' && row[4].startsWith('U');
+
+    if (isNewFormat) {
       // 新フォーマット: A:登校時刻 B:表示名 C:フルネーム D:学年 E:ID F:教室 G:座席 H:下校 I:滞在
-      [timestamp, studentName, fullName, grade, userId, classroom, seatNumber, checkoutTime, duration] = row;
+      timestamp = row[0];
+      studentName = row[1];
+      fullName = row[2] || '';
+      grade = row[3] || '';
+      userId = row[4];
+      classroom = row[5];
+      seatNumber = row[6];
+      checkoutTime = row[7] || '';
+      duration = row[8] || '';
     } else {
       // 旧フォーマット: A:登校時刻 B:表示名 C:ID D:教室 E:座席 F:下校 G:滞在
-      [timestamp, studentName, userId, classroom, seatNumber, checkoutTime, duration] = row;
+      timestamp = row[0];
+      studentName = row[1];
+      userId = row[2];
+      classroom = row[3];
+      seatNumber = row[4];
+      checkoutTime = row[5] || '';
+      duration = row[6] || '';
       fullName = '';
       grade = '';
     }
@@ -193,19 +234,25 @@ async function getOccupiedSeats(classroom) {
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
 
-    // 旧フォーマット（7列）と新フォーマット（9列）の両方に対応
-    let roomName, seatNumber, checkoutTime;
+    // 空の行をスキップ
+    if (!row || row.length === 0) {
+      continue;
+    }
 
-    if (row.length >= 9) {
+    // フォーマット判定: E列（index 4）にLINE User IDがあれば新フォーマット
+    let roomName, seatNumber, checkoutTime;
+    const isNewFormat = row[4] && typeof row[4] === 'string' && row[4].startsWith('U');
+
+    if (isNewFormat) {
       // 新フォーマット: A:登校時刻 B:表示名 C:フルネーム D:学年 E:ID F:教室 G:座席 H:下校 I:滞在
       roomName = row[5]; // F列
       seatNumber = row[6]; // G列
-      checkoutTime = row[7]; // H列
+      checkoutTime = row[7] || ''; // H列
     } else {
       // 旧フォーマット: A:登校時刻 B:表示名 C:ID D:教室 E:座席 F:下校 G:滞在
       roomName = row[3]; // D列
       seatNumber = row[4]; // E列
-      checkoutTime = row[5]; // F列
+      checkoutTime = row[5] || ''; // F列
     }
 
     // 同じ教室で、まだ下校していない座席を記録
