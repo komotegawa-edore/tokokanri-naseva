@@ -76,6 +76,34 @@ async function getUserByLineId(lineUserId) {
  * @returns {Promise<object>} 更新されたユーザー情報
  */
 async function completeRegistration(lineUserId, fullName, grade) {
+  // まずユーザーが存在するか確認
+  const existingUser = await getUserByLineId(lineUserId);
+
+  if (!existingUser) {
+    // ユーザーが存在しない場合は新規作成
+    const { data, error } = await supabase
+      .from('users')
+      .insert([
+        {
+          line_user_id: lineUserId,
+          full_name: fullName,
+          grade: grade,
+          registration_completed: true,
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('ユーザー登録作成エラー:', error);
+      throw error;
+    }
+
+    console.log('✅ ユーザー新規登録完了:', lineUserId, fullName, grade);
+    return data;
+  }
+
+  // ユーザーが存在する場合は更新
   const { data, error } = await supabase
     .from('users')
     .update({
@@ -89,11 +117,11 @@ async function completeRegistration(lineUserId, fullName, grade) {
     .single();
 
   if (error) {
-    console.error('ユーザー登録完了エラー:', error);
+    console.error('ユーザー登録更新エラー:', error);
     throw error;
   }
 
-  console.log('✅ ユーザー登録完了:', lineUserId, fullName, grade);
+  console.log('✅ ユーザー登録更新完了:', lineUserId, fullName, grade);
   return data;
 }
 

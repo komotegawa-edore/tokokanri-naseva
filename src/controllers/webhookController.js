@@ -229,6 +229,21 @@ async function handleFollow(event) {
   const lineUserId = event.source.userId;
   console.log('新しいユーザーが友だち追加しました:', lineUserId);
 
+  const { client } = require('../config/line');
+  const userRepository = require('../repositories/userRepository');
+
+  try {
+    // LINEプロフィール情報を取得
+    const profile = await client.getProfile(lineUserId);
+
+    // ユーザーレコードを作成または取得
+    await userRepository.getOrCreateUser(lineUserId, profile.displayName);
+    console.log('✅ ユーザーレコード作成/取得完了:', lineUserId, profile.displayName);
+  } catch (error) {
+    console.error('プロフィール取得エラー:', error);
+    // プロフィール取得に失敗しても続行（後で登録フローで対応）
+  }
+
   // 登録済みチェック（未登録なら登録フローを開始）
   // 公式LINE側でウェルカムメッセージを設定しているため、こちらでは送信しない
   await registrationController.checkAndStartRegistration(event);

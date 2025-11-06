@@ -93,7 +93,21 @@ async function handleGradeSelection(event, postbackData, session) {
  */
 async function checkAndStartRegistration(event) {
   const lineUserId = event.source.userId;
-  const user = await userRepository.getUserByLineId(lineUserId);
+  let user = await userRepository.getUserByLineId(lineUserId);
+
+  // ユーザーレコードが存在しない場合は作成
+  if (!user) {
+    const { client } = require('../config/line');
+    try {
+      const profile = await client.getProfile(lineUserId);
+      user = await userRepository.getOrCreateUser(lineUserId, profile.displayName);
+      console.log('✅ ユーザーレコード作成:', lineUserId, profile.displayName);
+    } catch (error) {
+      console.error('プロフィール取得エラー:', error);
+      // プロフィール取得に失敗した場合は仮の名前で作成
+      user = await userRepository.getOrCreateUser(lineUserId, 'ユーザー');
+    }
+  }
 
   // ユーザーが登録完了している場合は何もしない
   if (user?.registration_completed) {

@@ -15,6 +15,7 @@ async function logWebhookEvent(eventType, lineUserId, payload, status = 'receive
       {
         event_type: eventType,
         line_user_id: lineUserId,
+        webhook_event_id: payload.webhookEventId || null,
         payload,
         status,
         error_message: errorMessage,

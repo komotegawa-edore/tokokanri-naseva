@@ -12,12 +12,12 @@ const supabase = require('../config/supabase');
  */
 async function isProcessed(webhookEventId) {
   try {
-    // webhook_logsテーブルでwebhookEventIdを検索（payloadのJSONB内を検索）
-    // ->> 演算子でJSONBフィールドから文字列値を取得
+    // webhook_logsテーブルでwebhook_event_idカラムを検索
+    // インデックスが効くため高速
     const { data, error } = await supabase
       .from('webhook_logs')
       .select('id')
-      .eq('payload->>webhookEventId', webhookEventId)
+      .eq('webhook_event_id', webhookEventId)
       .limit(1);
 
     if (error) {
