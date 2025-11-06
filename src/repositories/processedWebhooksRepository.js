@@ -12,19 +12,19 @@ const supabase = require('../config/supabase');
  */
 async function isProcessed(webhookEventId) {
   try {
+    // webhook_logsテーブルでwebhookEventIdを検索（payloadのJSONB内を検索）
     const { data, error } = await supabase
-      .from('processed_webhooks')
+      .from('webhook_logs')
       .select('id')
-      .eq('id', webhookEventId)
-      .single();
+      .eq('payload->webhookEventId', webhookEventId)
+      .limit(1);
 
-    if (error && error.code !== 'PGRST116') {
-      // PGRST116 = Not Found以外のエラーは記録
-      console.error('processed_webhooks チェックエラー:', error);
+    if (error) {
+      console.error('webhook_logs チェックエラー:', error);
       return false; // エラー時は処理を続行（安全側に倒す）
     }
 
-    return !!data; // データが存在すれば処理済み
+    return data && data.length > 0; // データが存在すれば処理済み
   } catch (error) {
     console.error('isProcessed エラー:', error);
     return false; // エラー時は処理を続行
@@ -33,30 +33,14 @@ async function isProcessed(webhookEventId) {
 
 /**
  * Webhookイベントを処理済みとして記録
- * @param {string} webhookEventId - LINEのWebhookイベントID
+ * 注: webhook_logsテーブルはwebhookLogRepositoryで既に記録されているため、
+ * この関数は実際には何もしない（既存のログ記録で重複チェックが可能）
  * @returns {Promise<void>}
  */
-async function markAsProcessed(webhookEventId) {
-  try {
-    const { error } = await supabase
-      .from('processed_webhooks')
-      .insert([
-        {
-          id: webhookEventId,
-          created_at: new Date().toISOString(),
-        },
-      ]);
-
-    if (error) {
-      // 重複キーエラー（23505）は無視
-      if (error.code !== '23505') {
-        console.error('markAsProcessed エラー:', error);
-      }
-    }
-  } catch (error) {
-    console.error('markAsProcessed 例外:', error);
-    // エラーでも処理は続行（記録失敗してもWebhook処理は完了させる）
-  }
+async function markAsProcessed() {
+  // webhook_logsは既にwebhookLogRepository.logWebhookEventで記録されているため、
+  // ここでは追加の処理は不要
+  // isProcessed()関数がpayload内のwebhookEventIdで重複をチェックする
 }
 
 /**
@@ -70,7 +54,7 @@ async function cleanupOldRecords() {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
     const { data, error } = await supabase
-      .from('processed_webhooks')
+      .from('webhook_logs')
       .delete()
       .lt('created_at', sevenDaysAgo.toISOString())
       .select();

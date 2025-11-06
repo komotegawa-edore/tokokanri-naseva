@@ -76,10 +76,8 @@ async function handleEvent(event) {
         console.log('未対応のイベントタイプ:', eventType);
     }
 
-    // 処理済みとして記録
-    if (webhookEventId) {
-      await processedWebhooksRepository.markAsProcessed(webhookEventId);
-    }
+    // 処理済みとして記録（webhook_logsテーブルに既に記録されているため不要）
+    // await processedWebhooksRepository.markAsProcessed();
 
     // 成功ログ
     await webhookLogRepository.logWebhookEvent(
