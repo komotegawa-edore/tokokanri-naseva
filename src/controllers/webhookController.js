@@ -2,6 +2,7 @@ const checkinController = require('./checkinController');
 const checkoutController = require('./checkoutController');
 const historyController = require('./historyController');
 const webhookLogRepository = require('../repositories/webhookLogRepository');
+const processedWebhooksRepository = require('../repositories/processedWebhooksRepository');
 const { parsePostbackData } = require('../utils/messageBuilder');
 const messages = require('../constants/messages');
 const { replySafely } = require('../utils/lineReplyHelper');
@@ -34,6 +35,16 @@ async function handleWebhook(req, res) {
 async function handleEvent(event) {
   const eventType = event.type;
   const lineUserId = event.source?.userId;
+  const webhookEventId = event.webhookEventId;
+
+  // 重複チェック: 既に処理済みのイベントは無視
+  if (webhookEventId) {
+    const alreadyProcessed = await processedWebhooksRepository.isProcessed(webhookEventId);
+    if (alreadyProcessed) {
+      console.log(`⏭️  既に処理済みのWebhookイベント: ${webhookEventId}`);
+      return;
+    }
+  }
 
   // Webhookログ記録
   await webhookLogRepository.logWebhookEvent(
@@ -63,6 +74,11 @@ async function handleEvent(event) {
 
       default:
         console.log('未対応のイベントタイプ:', eventType);
+    }
+
+    // 処理済みとして記録
+    if (webhookEventId) {
+      await processedWebhooksRepository.markAsProcessed(webhookEventId);
     }
 
     // 成功ログ
