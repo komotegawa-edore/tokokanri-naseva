@@ -116,8 +116,10 @@ async function updateCheckoutRecord(rowIndex, checkoutTime, durationMinutes) {
   });
 
   const row = response.data.values?.[0] || [];
+
+  // 滞在時間を分として明示的に記録（数値のみ、時刻フォーマットではない）
   const values = [
-    [formatDate(checkoutTime, 'yyyy-MM-dd HH:mm:ss'), durationMinutes],
+    [formatDate(checkoutTime, 'yyyy-MM-dd HH:mm:ss'), `${durationMinutes}`],
   ];
 
   // フォーマット判定: E列（index 4）にLINE User IDがあれば新フォーマット
@@ -150,6 +152,7 @@ async function getUserHistory(lineUserId, limit = 10) {
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
     range: `${sheetName}!A:I`,
+    valueRenderOption: 'UNFORMATTED_VALUE', // 実際の値を取得（フォーマットされた表示ではなく）
   });
 
   const rows = response.data.values;
@@ -196,6 +199,32 @@ async function getUserHistory(lineUserId, limit = 10) {
 
     if (userId === lineUserId) {
       const hasDurationValue = duration !== undefined && duration !== null && duration !== '';
+
+      // durationMinutesの計算
+      let durationMinutes = null;
+      if (hasDurationValue) {
+        const parsedValue = parseFloat(duration);
+
+        // Google Sheetsのシリアル値（日時形式）かどうかを判定
+        // シリアル値の場合: 0.05 = 1時間12分（0.05日 = 1.2時間 = 72分）
+        // 通常の分の場合: 60, 120など大きな整数
+        if (!isNaN(parsedValue)) {
+          if (parsedValue < 1) {
+            // 1未満の小数値 → Google Sheetsの日付シリアル値（日の端数）
+            // 1日 = 1440分なので、値に1440を掛ける
+            durationMinutes = Math.round(parsedValue * 1440);
+            console.log(`🔄 時刻シリアル値→分変換: ${parsedValue} → ${durationMinutes}分`);
+          } else if (parsedValue < 100 && parsedValue !== Math.floor(parsedValue)) {
+            // 小数を含む100未満の値 → 時間単位の可能性
+            durationMinutes = Math.round(parsedValue * 60);
+            console.log(`🔄 時間→分変換: ${parsedValue}時間 → ${durationMinutes}分`);
+          } else {
+            // それ以外 → すでに分単位
+            durationMinutes = Math.round(parsedValue);
+          }
+        }
+      }
+
       userRecords.push({
         timestamp,
         studentName,
@@ -204,7 +233,7 @@ async function getUserHistory(lineUserId, limit = 10) {
         classroom,
         seatNumber: parseInt(seatNumber, 10),
         checkoutTime,
-        durationMinutes: hasDurationValue ? parseInt(duration, 10) : null,
+        durationMinutes,
       });
     }
   }

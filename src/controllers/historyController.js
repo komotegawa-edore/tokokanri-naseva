@@ -29,11 +29,22 @@ async function showHistory(event) {
       const date = dateTimeStr ? dateTimeStr.split('T')[0].split(' ')[0] : '日付不明';
       const durationMinutes = record.duration_minutes ?? record.durationMinutes;
 
+      // 滞在時間の表示判定
+      let duration;
+      if (durationMinutes == null || durationMinutes === '') {
+        // 未下校の場合
+        duration = '登校中';
+      } else if (typeof durationMinutes === 'number' && durationMinutes >= 0 && durationMinutes <= 1440) {
+        // 妥当な範囲（0分～24時間）の場合はフォーマット
+        duration = formatDuration(durationMinutes);
+      } else {
+        // 異常値の場合
+        duration = 'エラー';
+      }
+
       return {
         date,
-        duration: durationMinutes
-          ? formatDuration(durationMinutes)
-          : '登校中',
+        duration,
       };
     });
 
